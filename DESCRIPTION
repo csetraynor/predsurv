@@ -1,0 +1,23 @@
+Package: predsurv
+Title: Build and compare diverse prediction survival models.
+Version: 0.0.0.9000
+Authors@R: person("Carlos", "Traynor", email = "carlos.serra91@gmail.com", role = c("aut", "cre"))
+Description: predsurv is a package to organise all my scripts in survival prediction in my first years as a PhD student.
+Depends: R (>= 3.4.2),
+		ggplot2,
+		magrittr
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports:
+		purrr,
+		cgdsr,
+		dplyr,
+		VIM,
+		rlang,
+		magrittr,
+		assertthat,
+		ggplot2,
+		rlang
+RoxygenNote: 6.0.1
+
