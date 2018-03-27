@@ -18,6 +18,10 @@ Imports:
 		magrittr,
 		assertthat,
 		ggplot2,
-		rlang
+		ipred,
+		survival,
+		survivalROC,
+		rethinking,
+		glmnet
 RoxygenNote: 6.0.1
 

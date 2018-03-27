@@ -43,7 +43,7 @@ drop_na <- function(d, ..., n = NA){
   d_old <- d
   d <- d[complete.cases(d %>% dplyr::select(!!!fit_var)),]
   # d <- d %>%
-  #   dplyr::filter(!is.na(!!fit_var))
+  #   dplyr::filter(!is.na(!!!fit_var))
   if(!is.na(n)){
     #Check n fewer obsrvations than original
     assertthat::assert_that(nrow(d) == nrow(d_old) - n)
