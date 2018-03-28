@@ -4,8 +4,8 @@
 \alias{gen_stan_data}
 \title{This function generates the stan data for a clinical PEM model, the rason for not #' introducing genomic covariates is that it takes too much memory, for instance the #' genomic covariates will be handled ina module in Python.}
 \usage{
-gen_stan_data(d, formua = as.formula(~1), time = os_months,
-  status = os_status, sample_id = patient_id, time_id = time_id)
+gen_stan_data(d, formula = as.formula(~1), time = t_dur,
+  status = os_event, sample_id = patient_id, time_id = time_id)
 }
 \arguments{
 \item{d}{a dataset \cr

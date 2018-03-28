@@ -22,7 +22,8 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
   d <- d %>% dplyr::mutate_at(rlang::quo_text(time), dplyr::funs(add_epsilon))
 
   #set the tau interval times
-  tau <- d %>% dplyr::select(!!time) %>% unlist %>% unique %>% sort()
+  tau <- d %>% dplyr::filter(!!status == event_type) %>%
+    dplyr::select(!!time) %>% unlist %>% unique %>% sort()
   tau <- tau[seq(1, k, c)]
   print(tau)
 
@@ -31,10 +32,11 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
                         dplyr::mutate(os_event = ( !!status == event_type),
                                       time2event = !!time) ,
                         cut = tau)
-  #Create time ID
+  #Create time ID and calculate t_dur
   longdata <- longdata %>%
     dplyr::group_by(!!sample_id) %>%
     dplyr::mutate(t_id = seq(n())) %>%
+    dplyr::mutate(t_dur = time2event - tstart) %>%
     dplyr::ungroup()
 
 
@@ -55,7 +57,17 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
 #' @importFrom rlang !!
 #' @importFrom magrittr %>%
 #' @import  dplyr
-gen_stan_data <- function(d, formua = as.formula(~1), time = os_months, status = os_status, sample_id = patient_id , time_id = time_id) {
+gen_stan_data <- function(d, formula = as.formula(~1), time = t_dur, status = os_event, sample_id = patient_id , time_id = time_id) {
+  if(!inherits(formula, 'formula'))
+    formula <- as.formula(formula)
+  X <- d %>%
+    stats::model.matrix(formula, data = .)
+  P <- ncol(X)
+  if (P > 1){
+    if("(Intercept)" %in% colnames(X))
+      X <- array(X[,-1], dim = c(nrow(d), P - 1))
+    P <- ncol(X)
+  }
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -70,9 +82,11 @@ gen_stan_data <- function(d, formua = as.formula(~1), time = os_months, status =
     ID = length(unique(d %>% dplyr::select(!!sample_id))),
     "T" = dplyr::n_distinct(d %>% dplyr::select(!!time)),
     s = as.integer(patient_id),
-    t_obs = d %>% dplyr::select(!!time) %>% unlist,
+    t_dur = d %>% dplyr::select(!!time) %>% unlist,
     status = d %>% dplyr::select(!!status) %>% unlist,
-    t_id = d %>% dplyr::select(!!t_id) %>% unlist
+    t_id = d %>% dplyr::select(!!time_id) %>% unlist,
+    X = X,
+    P = P
   )
   return(stan_data)
 }
