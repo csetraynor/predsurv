@@ -5,6 +5,7 @@
 #' @param  d a dataset from cgdsr
 #' @return dataset complete
 #' @export
+#' @importFrom magrittr %>%
 blank_to_na <- function(d){
   `%>%` <- magrittr::`%>%`
   convert_blank_to_na <- function(x) {
@@ -23,6 +24,7 @@ blank_to_na <- function(d){
 #' @param  d a dataset from cgdsr
 #' @return dataset complete
 #' @export
+#' @importFrom magrittr %>%
 plot_na <- function(d){
     d %>%
     VIM::aggr(prop = FALSE, combined = TRUE, numbers = TRUE,
@@ -38,12 +40,14 @@ plot_na <- function(d){
 #' n optional parameter to assure number of rows deleted, default NA
 #' @return d a clean dataset
 #' @export
-drop_na <- function(d, ..., n = NA){
+#' @importFrom magrittr %>%
+drop_na <- function(d, ..., time = os_months, n = NA){
   fit_var <- dplyr::quos(...)
+  time <- dplyr::enquo(time)
   d_old <- d
   d <- d[complete.cases(d %>% dplyr::select(!!!fit_var)),]
   # d <- d %>%
-  #   dplyr::filter(!is.na(!!!fit_var))
+  #   dplyr::filter(!!time > 0)
   if(!is.na(n)){
     #Check n fewer obsrvations than original
     assertthat::assert_that(nrow(d) == nrow(d_old) - n)

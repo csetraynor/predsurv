@@ -4,7 +4,7 @@
 \alias{drop_na}
 \title{Clean dataset}
 \usage{
-drop_na(d, ..., n = NA)
+drop_na(d, ..., time = os_months, n = NA)
 }
 \arguments{
 \item{d}{a dataset \cr
