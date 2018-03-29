@@ -36,8 +36,8 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
   longdata <- longdata %>%
     dplyr::group_by(!!sample_id) %>%
     dplyr::mutate(t_id = seq(n())) %>%
-    dplyr::mutate(t_dur = time2event - tstart) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::mutate(t_dur = time2event - tstart)
 
 
   return(longdata)
@@ -57,7 +57,7 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
 #' @importFrom rlang !!
 #' @importFrom magrittr %>%
 #' @import  dplyr
-gen_stan_data <- function(d, formula = as.formula(~1), time = t_dur, status = os_event, sample_id = patient_id , time_id = time_id) {
+gen_stan_data <- function(d, formula = as.formula(~1), time = t_dur, status = os_event, sample_id = patient_id , time_id = t_id) {
   if(!inherits(formula, 'formula'))
     formula <- as.formula(formula)
   X <- d %>%

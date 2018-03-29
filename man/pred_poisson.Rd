@@ -4,7 +4,8 @@
 \alias{pred_poisson}
 \title{Make predictions for the PEM. Series of functions in the PEM MLE.}
 \usage{
-pred_poisson(d, time = os_months)
+pred_poisson(d, time = os_months, status = os_event, event_type = 1,
+  k = NA, c = 1)
 }
 \arguments{
 \item{d}{a dataset \cr}
