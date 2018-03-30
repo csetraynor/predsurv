@@ -48,21 +48,21 @@ fit_poisson <- function(d , t_start = tstart, t_stop = time2event, t_dur = t_dur
 #' @return a dataframe ready to be plotted
 #' @export
 #' @importFrom magrittr %>%
-pred_poisson <- function(d , time = os_months, status = os_event, event_type = 1, k=NA, c= 1){
+pred_poisson <- function(d , time = os_months, status = os_event, event_type = 1, k= seq_along(tau)){
 
 
   time = dplyr::enquo(time)
   status = dplyr::enquo(status)
 
-  time <- c(sort(unique(d %>% dplyr::filter(!!status == event_type) %>%
+  tau <- c(sort(unique(d %>% dplyr::filter(!!status == event_type) %>%
                           dplyr::select(!!time) %>% unlist)))
-  if(!is.na(k)){
-    time <- c(time[seq(1, k ,c)],max(time))
-  }
-  t_dur <- diff(c(0, time))
-  p1<-stats::predict(mgcv::gam(os_event~1+offset(log(t_dur))+s(time2event),d,family='poisson'),data.frame(t_dur=t_dur,time2event=time))
+
+  tau <- c(tau[k],max(tau))
+  print(tau)
+  t_dur <- diff(c(0, tau))
+  p1<-stats::predict(mgcv::gam(os_event~1+offset(log(t_dur))+s(time2event),d,family='poisson'),data.frame(t_dur=t_dur,time2event=tau))
   S1<-exp(-cumsum(exp(p1)))
-  plotframe<-data.frame(Time=c(0,time),S1=c(1,S1))
+  plotframe<-data.frame(Time=c(0,tau),S1=c(1,S1))
   return(plotframe)
 }
 #' Prediction plot for the PEM

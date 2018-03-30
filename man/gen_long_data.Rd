@@ -5,7 +5,7 @@
 \title{This function generates the long data neeeded for a piecewise exponential model}
 \usage{
 gen_long_data(d, time = os_months, status = os_status,
-  sample_id = patient_id, k, c = 1, event_type = "DECEASED")
+  sample_id = patient_id, k = seq_along(tau), event_type = "DECEASED")
 }
 \arguments{
 \item{d}{a dataset \cr

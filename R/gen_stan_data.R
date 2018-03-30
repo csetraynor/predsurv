@@ -9,7 +9,7 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
-gen_long_data <- function(d, time = os_months, status = os_status, sample_id = patient_id, k, c=1, event_type = "DECEASED") {
+gen_long_data <- function(d, time = os_months, status = os_status, sample_id = patient_id, k = seq_along(tau), event_type = "DECEASED") {
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -24,7 +24,7 @@ gen_long_data <- function(d, time = os_months, status = os_status, sample_id = p
   #set the tau interval times
   tau <- d %>% dplyr::filter(!!status == event_type) %>%
     dplyr::select(!!time) %>% unlist %>% unique %>% sort()
-  tau <- tau[seq(1, k, c)]
+  tau <- tau[k]
   print(tau)
 
   longdata <- survival::survSplit(Surv(time2event, os_event ) ~.,
