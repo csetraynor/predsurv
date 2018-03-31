@@ -12,13 +12,15 @@
 #' @export
 #' @importFrom rethinking map
 #' @importFrom rlang !!
-map_pem <- function(l , formula = tobacco_smoking_history_indicator){
+map_pem <- function(mylist , formula = tobacco_smoking_history_indicator, offset= t_dur){
+  offset = rlang::enquo(offset)
 
+  mylist[["log_tdur"]] <- log(mylist[[rlang::quo_text(offset)]])
   m1 <- rethinking::map(
     alist(
       status ~ dpois(lambda),
-      lambda <- a[t_id] + offset(log(t_dur)),
-      a ~ dgamma(2, .1)
-    ), data=l,  start=list(a=0, lambda = 0.1) )
-
+      log(lambda) <- a[t_id] + log_tdur,
+      a[t_id] ~ dnorm(0, 1)
+    ), data=mylist )
+  return(m1)
 }

@@ -4,7 +4,7 @@
 \alias{map_pem}
 \title{Fit MAP estimates for the Poisson Model PEM.   Important aspects of the modelling #'approach: Dependent variable is the binary event indicator. Adding an intercept is #'recommendable to provide a decent and interpretable reference category for factor #'variables. Use the logarithm of the interval length as an offset.}
 \usage{
-map_pem(l, formula = tobacco_smoking_history_indicator)
+map_pem(mylist, formula = tobacco_smoking_history_indicator, offset = t_dur)
 }
 \arguments{
 \item{d}{a dataset \cr
