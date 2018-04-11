@@ -50,6 +50,48 @@ plot_km <- function(d, time = os_months, status = os_status, event_type = "DECEA
     ggtitle(paste0('KM for', x ,' Cohort'))
 }
 
+
+#' Fit Exponential distribution
+#'
+#' This function fits the Weibull distribution
+#'
+#' @param
+#' d a dataset \cr
+#' x customise plot title \cr
+#' event_type codification of event type , default DECEASED
+#' @return d a clean dataset
+#' @export
+#' @importFrom rlang !!
+#' @import ggfortify
+#' @importFrom magrittr %>%
+fit_weibull <- function(d){
+  expfit <-   survival::survreg(survival::Surv(os_months, os_deceased) ~ age, data = d %>% mutate(os_deceased = (os_status == "DECEASED")) %>% filter(os_months > 0), dist = "exp")
+  scale = exp(expfit$coefficient[1])
+  beta = weifit$coefficients[2]
+}
+
+
+
+#' Fit Weibull distribution
+#'
+#' This function fits the Weibull distribution
+#'
+#' @param
+#' d a dataset \cr
+#' x customise plot title \cr
+#' event_type codification of event type , default DECEASED
+#' @return d a clean dataset
+#' @export
+#' @importFrom rlang !!
+#' @import ggfortify
+#' @importFrom magrittr %>%
+fit_weibull <- function(d){
+   weifit <-   survival::survreg(survival::Surv(os_months, os_deceased) ~ age, data = d %>% mutate(os_deceased = (os_status == "DECEASED")) %>% filter(os_months > 0))
+  shape  =   1/weifit$scale
+  scale = exp(weifit$coefficient[1])
+  beta = weifit$coefficients[2]
+}
+
 #' The function for plot correlation between explanatory variables
 #'
 #' @param

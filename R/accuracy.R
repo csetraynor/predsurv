@@ -3,17 +3,17 @@
 #' This function recieves a training set and a test set and calculates
 #' different measures of accuracy and loss functions
 #' @param
-#' pred_newdata a dataset prediction made by the training set (or CV fold)  \cr
-#' tet_data the hold out dataset \cr
+#' pred_data a dataset prediction made by the training set (or CV fold)  \cr
+#' test_data the hold out dataset \cr
 #' cutoff an optional parameter to integrate the Brier score in a different time, default is max observed time \cr
 #' @return pp_bried the posterior predicted integrated brier score
 #' @export
-brier_score <- function(pred_newdata, test_data, cutoff=NA){
-  smod <- with(test %>% dplyr::mutate(
+brier_score <- function(pred_data, test_data, cutoff=NA){
+  smod <- with(test_data %>% dplyr::mutate(
     os_deceased = os_status == 'DECEASED'),
     survival::Surv(os_months, os_deceased))
 
-  pred_KM <- lapply(pred_newdata %>%
+  pred_KM <- lapply(pred_data %>%
                       purrr::map(~ dplyr::mutate(.,
                                    os_deceased = os_status == 'DECEASED')),
                     function(x){

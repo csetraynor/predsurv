@@ -4,11 +4,11 @@
 \alias{brier_score}
 \title{Calculate Integrated Brier Score}
 \usage{
-brier_score(pred_newdata, test_data, cutoff = NA)
+brier_score(pred_data, test_data, cutoff = NA)
 }
 \arguments{
-\item{pred_newdata}{a dataset prediction made by the training set (or CV fold)  \cr
-tet_data the hold out dataset \cr
+\item{pred_data}{a dataset prediction made by the training set (or CV fold)  \cr
+test_data the hold out dataset \cr
 cutoff an optional parameter to integrate the Brier score in a different time, default is max observed time \cr}
 }
 \value{
