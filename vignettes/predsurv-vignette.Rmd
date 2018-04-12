@@ -24,7 +24,7 @@ We will need various packages that can be installed through the installation of 
 ```{r}
 library(predsurv)
 #data("survdata")#load data
-survdata <- surv_sim_data(n = 50, features = 1000)
+survdata <- surv_sim_data(n = 80, features = 1000)
 ```
 Because this is a  simulated dataset we can skip various steps of data manipulation, however we want to review a first data exploration, for example the time to event distribution and the Kaplan and Meier plots. Besides, create a test and training splits. We will use a function of the package survdata.
 
@@ -34,7 +34,7 @@ plot_km(survdata, time = os_months, status = os_status, event_type = "DECEASED")
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8)
+fold = create_training_test_set(survdata, p = 0.8, y = os_status)
 train = fold[["train"]]
 test = fold[["test"]]
 ```
@@ -48,8 +48,38 @@ summary(fit1)
 Another method is the dimension reduction obtained by using supervised principal components:
 
 ```{r}
-x <- matrix(train %>% select(contains("feature")))
+'%>%' <- magrittr::'%>%'
+x <- as.matrix(train %>% dplyr::select(dplyr::contains("feature")))
+y <- as.matrix(train %>% 
+                 dplyr::mutate(status = os_status == "DECEASED" ,
+                               time = os_months) %>%
+                 dplyr::select(time, status) )
+```
 
+Another method we have talked about is the penalised likelihood methods ridge regression and Lasso.
+
+```{r}
+lasso_cv_fit <- glmnet::cv.glmnet(x, y , family = "cox", fold = 10)
+```
+
+```{r}
+plot(lasso_cv_fit)
+```
+
+
+```{r}
+nx = as.matrix(test %>% dplyr::select(dplyr::contains("feature")))
+pred <- predict(lasso_cv_fit, newx = nx, s = "lambda.min")
+```
+
+```{r}
+predict.coxph
+ride {survival}
+smod <- with(train %>%
+               dplyr::mutate(os_deceased = os_status == "DECEASED")
+               , Surv(os_months, os_deceased))
+# integrated Brier score up to max(time)
+ipred::sbrier(smod, pred)
 ```
 
 
