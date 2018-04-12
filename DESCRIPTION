@@ -12,6 +12,7 @@ LazyData: true
 Imports:
 		purrr,
 		cgdsr,
+		caret,
 		dplyr,
 		VIM,
 		rlang,
@@ -27,4 +28,6 @@ Imports:
 		stats,
 		mgcv
 RoxygenNote: 6.0.1
-
+Suggests: knitr,
+    rmarkdown
+VignetteBuilder: knitr

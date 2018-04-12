@@ -3,6 +3,7 @@
 export(blank_to_na)
 export(brier_score)
 export(categories_to_index)
+export(create_training_test_set)
 export(drop_na)
 export(fit_poisson)
 export(fit_weibull)

@@ -1,0 +1,95 @@
+---
+title: "Prediction of Survival Outcome"
+author: "Carlos S Traynor"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette serves as an approach to the modelling of survival data in medical statistics. We will review the most relevant methods including adaptations to the use of high throughput genomic data. There are a vast number of packages focused in survival analysis and our goal is make a summary of the most useful functions and the best ways to combine them to obtain a meaningfull analysis.  
+
+The main outcome in survival analysis is the time untill an event occurs. The difference between survival analysis and other statistical analysis is that some events are censored, or not observed because the actual event time is longer than the follow-up of the study.
+
+We will need various packages that can be installed through the installation of predsurv package. In addition we will work with a simulated dataset,  which is a list containing a gene expression matrix and the survival outcome of an hypothetical experiment, you can check the simulation algorithm in data-raw.
+```{r}
+library(predsurv)
+data("survdata")#load data
+```
+Because this is a  simulated dataset we can skip various steps of data manipulation, and create a test and training splits. We will use a function of the package survdata.
+```{r}
+fold = create_training_test_set(survdata, p = 0.8)
+train = fold[["train"]]
+test = fold[["test"]]
+```
+
+We will first fit a subset selection method, for example the forward step wise method can be fitted using the function stepAIC in the MASS package:
+```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
+fit1 = MASS::stepAIC(survival::MASScoxph(Surv(surv_months, censoring.status) ~ ., data = train), direction = "forward")
+summary(fit1)
+```
+
+Another method is the dimension reduction obtained by using supervised principal components:
+
+```{r}
+x <- matrix(train %>% select(contains("feature")))
+
+```
+
+
+Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+
+- Never uses retina figures
+- Has a smaller default figure size
+- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+
+## Vignette Info
+
+Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+
+## Styles
+
+The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+
+    output: 
+      rmarkdown::html_vignette:
+        css: mystyles.css
+
+## Figures
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, fig.show='hold'}
+plot(1:10)
+plot(10:1)
+```
+
+You can enable figure captions by `fig_caption: yes` in YAML:
+
+    output:
+      rmarkdown::html_vignette:
+        fig_caption: yes
+
+Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+
+## More Examples
+
+You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))
