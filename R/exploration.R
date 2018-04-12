@@ -9,15 +9,17 @@
 #' @return d a clean dataset
 #' @export
 #' @importFrom magrittr %>%
+#' @importFrom rlang !!
 plot_tte_dist <- function(d, time = os_months, status = os_status, alpha = 0.5){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   theme_set(theme_bw())
-  p <- d %>%
-    ggplot(aes_string(x = rlang::quo_text(time),
-                      group = rlang::quo_text(status),
-                      colour = rlang::quo_text(status),
-                      fill =  rlang::quo_text(status))) +
+  p <- d %>% dplyr::mutate(status = as.factor( !!status ),
+                           time = !!time) %>%
+    ggplot(aes(x = time,
+                      group = status,
+                      colour = status,
+                      fill =  status)) +
     geom_density( alpha = alpha)+
     scale_color_discrete(name = "Overall Survival", label=c("Deceased", "Living")) +
     scale_fill_discrete(name = "Overall Survival", label=c("Deceased", "Living"))

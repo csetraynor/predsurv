@@ -23,9 +23,16 @@ The main outcome in survival analysis is the time untill an event occurs. The di
 We will need various packages that can be installed through the installation of predsurv package. In addition we will work with a simulated dataset,  which is a list containing a gene expression matrix and the survival outcome of an hypothetical experiment, you can check the simulation algorithm in data-raw.
 ```{r}
 library(predsurv)
-data("survdata")#load data
+#data("survdata")#load data
+survdata <- surv_sim_data(n = 50, features = 1000)
 ```
-Because this is a  simulated dataset we can skip various steps of data manipulation, and create a test and training splits. We will use a function of the package survdata.
+Because this is a  simulated dataset we can skip various steps of data manipulation, however we want to review a first data exploration, for example the time to event distribution and the Kaplan and Meier plots. Besides, create a test and training splits. We will use a function of the package survdata.
+
+
+```{r}
+plot_km(survdata, time = os_months, status = os_status, event_type = "DECEASED")
+```
+
 ```{r}
 fold = create_training_test_set(survdata, p = 0.8)
 train = fold[["train"]]
