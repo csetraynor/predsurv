@@ -21,8 +21,10 @@ surv_sim_data <- function( alpha = 0.8, mu = -3, n = 80, features = 1000, seed =
     ),
     os_months = ifelse(surv_months < censor_months,
                        surv_months, censor_months
-    )
-    )
+    ),
+    os_deceased = (os_status == "DECEASED")
+    ) %>%
+    dplyr::select(os_months, os_status, os_deceased)
   featurenames <- paste("feature",as.character(1:1000),sep="")
   x <- t(x)
   colnames(x) <- featurenames

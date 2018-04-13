@@ -12,7 +12,8 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  theme_set(theme_bw())
 )
 ```
 
@@ -24,7 +25,7 @@ We will need various packages that can be installed through the installation of 
 ```{r}
 library(predsurv)
 #data("survdata")#load data
-survdata <- surv_sim_data(n = 80, features = 1000)
+survdata <- surv_sim_data(n = 200, features = 1000)
 ```
 Because this is a  simulated dataset we can skip various steps of data manipulation, however we want to review a first data exploration, for example the time to event distribution and the Kaplan and Meier plots. Besides, create a test and training splits. We will use a function of the package survdata.
 
@@ -34,21 +35,31 @@ plot_km(survdata, time = os_months, status = os_status, event_type = "DECEASED")
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8, y = os_status)
+fold = create_training_test_set(survdata, p = 0.8, status = os_status)
 train = fold[["train"]]
 test = fold[["test"]]
+head(train[,1:6])
 ```
 
 We will first fit a subset selection method, for example the forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-fit1 = MASS::stepAIC(survival::MASScoxph(Surv(surv_months, censoring.status) ~ ., data = train), direction = "forward")
-summary(fit1)
+fit_forward = MASS::stepAIC(survival::coxph(Surv(os_months, os_deceased) ~ ., data = train ), direction = "forward")
+print(fit_forward)
 ```
+
+Now we can plot the predictions of the model using the function survfit, we also can make use of the "then" operator from magrittr "%>%":
+```{r}
+pred_coxph = pred_surv(obj = fit_forward, beta = coef)
+plot_km(pred_coxph, time = time, status = status, event_type = 1)
+plot_km(test, time = os_months, status = os_deceased, event_type = 1)
+```
+
+
 
 Another method is the dimension reduction obtained by using supervised principal components:
 
 ```{r}
-'%>%' <- magrittr::'%>%'
+
 x <- as.matrix(train %>% dplyr::select(dplyr::contains("feature")))
 y <- as.matrix(train %>% 
                  dplyr::mutate(status = os_status == "DECEASED" ,

@@ -10,13 +10,19 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
-create_training_test_set <- function(d, y = censoring.status,  seed = 111, percent = 0.8){
+create_training_test_set <- function(d, status = status,  seed = 111, percent = 0.8){
   set.seed(seed)
 
-  status <- dplyr::enquo(y)
+  y <- dplyr::enquo(status)
 
-  tmp <- caret::createDataPartition(y = d %>% select(!!status) %>% unlist,
+  tmp <- caret::createDataPartition(y = d %>% dplyr::select(!!y) %>% unlist,
                                     p = percent, list =  FALSE)
-  train <-  d[tmp,] ; test <- d[-tmp,]
+  train <-  d[tmp,]
+  test <- d[-tmp,]
+
+  train <- train %>% dplyr::select(- !!y)
+  test <- test %>% dplyr::select(- !!y)
+
+
   return(list(train = train, test = test))
 }

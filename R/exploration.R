@@ -39,7 +39,7 @@ plot_tte_dist <- function(d, time = os_months, status = os_status, alpha = 0.5){
 #' @importFrom rlang !!
 #' @import ggfortify
 #' @importFrom magrittr %>%
-plot_km <- function(d, time = os_months, status = os_status, event_type = "DECEASED", x= "survival"){
+plot_km <- function(d, time = time, status = status, event_type = 1, x= "survival"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
