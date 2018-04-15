@@ -26,7 +26,8 @@ Imports:
 		glmnet,
 		eply,
 		stats,
-		mgcv
+		mgcv,
+		party
 RoxygenNote: 6.0.1
 Suggests: knitr,
     rmarkdown

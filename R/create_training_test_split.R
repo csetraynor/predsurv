@@ -20,8 +20,8 @@ create_training_test_set <- function(d, status = status,  seed = 111, percent = 
   train <-  d[tmp,]
   test <- d[-tmp,]
 
-  train <- train %>% dplyr::select(- !!y)
-  test <- test %>% dplyr::select(- !!y)
+  # train <- train %>% dplyr::select(- !!y)
+  # test <- test %>% dplyr::select(- !!y)
 
 
   return(list(train = train, test = test))

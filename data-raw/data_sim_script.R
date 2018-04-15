@@ -1,3 +1,16 @@
+### Possible new method ###
+## Not run:
+n <- 200
+p <- 100
+beta <- c(rep(1,10),rep(0,p-10))
+x <- matrix(rnorm(n*p),n,p)
+real.time <- -(log(runif(n)))/(10*exp(drop(x %*% beta)))
+cens.time <- rexp(n,rate=1/10)
+status <- ifelse(real.time <= cens.time,1,0)
+time <- ifelse(real.time <= cens.time,real.time,cens.time)
+test = data.frame(time = time, status = status)
+
+######## Method now###
 set.seed(332)
 x<-matrix(rnorm(1000*80),ncol=80)
 y<-10+svd(x)$v[,1]+ .1*rnorm(80)

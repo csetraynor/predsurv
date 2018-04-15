@@ -12,8 +12,7 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  theme_set(theme_bw())
+  comment = "#>"
 )
 ```
 
@@ -24,18 +23,20 @@ The main outcome in survival analysis is the time untill an event occurs. The di
 We will need various packages that can be installed through the installation of predsurv package. In addition we will work with a simulated dataset,  which is a list containing a gene expression matrix and the survival outcome of an hypothetical experiment, you can check the simulation algorithm in data-raw.
 ```{r}
 library(predsurv)
+theme_set(theme_bw())
 #data("survdata")#load data
-survdata <- surv_sim_data(n = 200, features = 1000)
+survdata <- surv_sim_data(N = 20, features = 50, mu = 3, alpha = 0.8)
 ```
 Because this is a  simulated dataset we can skip various steps of data manipulation, however we want to review a first data exploration, for example the time to event distribution and the Kaplan and Meier plots. Besides, create a test and training splits. We will use a function of the package survdata.
 
 
 ```{r}
-plot_km(survdata, time = os_months, status = os_status, event_type = "DECEASED")
+survdata <- surv_sim_data(N = 20, features = 50, mu = -3, alpha = 0.8, cens_rate = 1/10)
+plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8, status = os_status)
+fold = create_training_test_set(survdata, p = 0.8, status = os_deceased)
 train = fold[["train"]]
 test = fold[["test"]]
 head(train[,1:6])
@@ -43,16 +44,29 @@ head(train[,1:6])
 
 We will first fit a subset selection method, for example the forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-fit_forward = MASS::stepAIC(survival::coxph(Surv(os_months, os_deceased) ~ ., data = train ), direction = "forward")
-print(fit_forward)
+mod.fs.coxph = fun_fit(train, fit = "stepwise")
+pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
+brier_score = fun_brier_score(obj = mod.fs.coxph, pred = pred.fs.coxph, data = test , beta = coef)
+plot_brier(brier_score)
+```
+
+Now we can obtain the cumulative prediction error curve or integrated Brier Score :
+```{r}
+ibrier = fun_ibrier_score(brier_score)
+print(ibrier)
+```
+Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
+```{r}
+cv.ibrier.fs = fun_cv(data = survdata, method = "forward", K = 20) 
+print(cv.ibrier.fs)
 ```
 
 Now we can plot the predictions of the model using the function survfit, we also can make use of the "then" operator from magrittr "%>%":
 ```{r}
-pred_coxph = pred_surv(obj = fit_forward, beta = coef)
-plot_km(pred_coxph, time = time, status = status, event_type = 1)
-plot_km(test, time = os_months, status = os_deceased, event_type = 1)
+pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
 ```
+
+This looks like the forward stepwise method is performing poorly, lets see a plot comparing this two:
 
 
 
@@ -76,6 +90,15 @@ lasso_cv_fit <- glmnet::cv.glmnet(x, y , family = "cox", fold = 10)
 ```{r}
 plot(lasso_cv_fit)
 ```
+
+
+
+Lets consider now the random forest we can fit the model with.
+```{r}
+mod.bst = fun_fit(train, fit = "random forest")
+random_forest_plot(mod.bst)
+```
+
 
 
 ```{r}
