@@ -13,9 +13,10 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 
-fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit){
+fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
+
 
   # take only covariates for which beta is not zero
   trainX <- train %>% dplyr::select(-!!time, -!!status)
@@ -29,15 +30,28 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 
   if(fit == "stepwise"){
     # create coxph object
-    fit1 <- survival::coxph(Surv(time, status)~1,
+    fit1 <- suppressWarnings(survival::coxph(Surv(time, status)~1,
                             data = traincoxphdata %>% dplyr::mutate(
                               time   = !!time,
-                              status = !!status) )
+                              status = !!status) ))
 
     testBeta <- as.formula(paste("~", paste(names(trainX), collapse = " + "), sep = " " ) )
 
+    if(penalty == "AIC"){
+      k = 2
+    }else{
+      if(penalty == "BIC"){
+        k = log(length(names(trainX)))
+      }
+    }
+
     #forward stepwise selection
-    mod <- MASS::stepAIC(fit1, scope = testBeta,  trace = FALSE, direction = method )
+    mod <- suppressWarnings(MASS::stepAIC(fit1,
+            scope = list(upper = testBeta, lower = ~1) ,
+            trace = FALSE,
+            direction = method,
+            k = k,
+            steps =  nrow(train)-2 ))
   }
 
   if(fit == "random forest"){
@@ -64,7 +78,7 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, test_data = test, train_data = train){
+mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, test_data = test, train_data = train, fit = "stepwise"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -86,17 +100,24 @@ mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, t
   form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
 
   # create coxph object with pre-defined coefficients
-  mod <- coxph(form , data = traincoxphdata %>% dplyr::mutate(
-    time = !!time,
-    status = !!status))
+  if(fit == "stepwise"){
+    mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
+      time = !!time,
+      status = !!status))
+  }else{
+    mod <- coxph(form , data = traincoxphdata %>% dplyr::mutate(
+      time = !!time,
+      status = !!status), init=selectedBeta, iter=0)
+  }
 
   # take test covariates for which beta is not zero
   testX <- test_data %>% dplyr::select(-!!time, -!!status)
   selectedTestX <- testX[,colnames(testX) %in% names(nonzero.coef)]
   ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints = seq(0, max(test %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
+  timepoints <-  ndata %>% dplyr::select(!!time) %>%  unlist
 
   probs = pec::predictSurvProb(mod, newdata = ndata, times = timepoints)
+  print(probs)
 
   return(probs)
 }
@@ -115,7 +136,7 @@ mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, t
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_brier_score <- function(obj, pred, time = os_months, status = os_deceased,  data = test, beta = beta){
+fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_months, status = os_deceased,  test_data = test, beta = beta){
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -126,14 +147,14 @@ fun_brier_score <- function(obj, pred, time = os_months, status = os_deceased,  
   nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
 
   # take test covariates for which beta is not zero
-  testX <- data %>% dplyr::select(-!!time, -!!status)
+  testX <- test_data %>% dplyr::select(-!!time, -!!status)
   selectedTestX <- testX[,nonzero.coef]
-  ndata <- cbind(data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints = seq(0, max(test %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
+  ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
+  timepoints <-  ndata %>% dplyr::select(!!time) %>% unlist
 
-  brier <- pec::pec(pred.fs.coxph, Surv(time, status) ~ 1, data = ndata %>% dplyr::mutate(
+  brier <- pec::pec(pred, Surv(time, status) ~ 1, data = ndata %>% dplyr::mutate(
     time   = !!time,
-    status = !!status), exact = F, exactness = 99L, maxtime = max(timepoints), times = timepoints)
+    status = !!status), maxtime = max(timepoints), times = timepoints)
 
 
   return(brier)

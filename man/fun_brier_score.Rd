@@ -4,8 +4,8 @@
 \alias{fun_brier_score}
 \title{Brier Score}
 \usage{
-fun_brier_score(obj, pred, time = os_months, status = os_deceased,
-  data = test, beta = beta)
+fun_brier_score(obj = mod.fs.coxph, pred = pred.fs.coxph,
+  time = os_months, status = os_deceased, test_data = test, beta = beta)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

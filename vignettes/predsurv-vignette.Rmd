@@ -25,13 +25,12 @@ We will need various packages that can be installed through the installation of 
 library(predsurv)
 theme_set(theme_bw())
 #data("survdata")#load data
-survdata <- surv_sim_data(N = 20, features = 50, mu = 3, alpha = 0.8)
 ```
 Because this is a  simulated dataset we can skip various steps of data manipulation, however we want to review a first data exploration, for example the time to event distribution and the Kaplan and Meier plots. Besides, create a test and training splits. We will use a function of the package survdata.
 
 
 ```{r}
-survdata <- surv_sim_data(N = 20, features = 50, mu = -3, alpha = 0.8, cens_rate = 1/10)
+survdata <- surv_sim_data(N = 250, features = 500, cens_rate = 1)
 plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
 ```
 
@@ -57,7 +56,7 @@ print(ibrier)
 ```
 Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
 ```{r}
-cv.ibrier.fs = fun_cv(data = survdata, method = "forward", K = 20) 
+cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 20) 
 print(cv.ibrier.fs)
 ```
 

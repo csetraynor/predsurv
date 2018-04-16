@@ -5,7 +5,7 @@
 \title{Cox Model Prediction}
 \usage{
 mod_pred(obj, time = os_months, status = os_deceased, beta = beta,
-  test_data = test, train_data = train)
+  test_data = test, train_data = train, fit = "stepwise")
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

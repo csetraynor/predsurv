@@ -11,7 +11,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_cv <- function(data, method = "forward", time = os_months, status = os_deceased, K = 10){
+fun_cv <- function(data, model_selection = "stepwise", time = os_months, status = os_deceased, K = 10){
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -26,29 +26,40 @@ fun_cv <- function(data, method = "forward", time = os_months, status = os_decea
   for(k in 1:K){
 
     #create train and test fold
-    train = data[-folds[[k]] ,]
-    test = data[folds[[k]] ,]
+    train <-  data[-folds[[k]] ,]
+    test <-  data[folds[[k]] ,]
 
     #apply method
-    if(method == "forward"){
-      mod.fs.coxph = predsurv::fun_fit_fs(train)
+    if(model_selection == "stepwise"){
+      mod.fs.coxph <-  predsurv::fun_fit(train, fit = "stepwise")
     }
 
 
     #make prediction
-    if(method == "forward"){
-    pred.forward.coxph = predsurv::mod_pred(obj = mod.fs.coxph, beta = coef)
+    if(model_selection == "stepwise"){
+      pred.fs.coxph <- predsurv::mod_pred(obj = mod.fs.coxph, beta = coef, test_data = test, train_data = train)
     }
 
     #calculate Brier score
-    if(method == "forward"){
-    brier_score = predsurv::fun_brier_score(obj = mod.fs.coxph, pred = pred.forward.coxph, data = test , beta = coef)
+    if(model_selection == "stepwise"){
+      brier_score <-  predsurv::fun_brier_score(obj = mod.fs.coxph,pred=pred.fs.coxph, test_data = test , beta = coef)
     }
 
     #save ibrier
-    ibrier[k] = predsurv::fun_ibrier_score(brier = brier_score)
+    ibrier[k] <-  predsurv::fun_ibrier_score(brier_score)
+
+    if(is.na(ibrier[k][1])){
+      print(pred.fs.coxph);
+      print(mod.fs.coxph);
+      print(head(test[1:6,1:6]));
+      print(head(train[1:6,1:6]));
+      print(brier_score);
+    }
+
+    print(ibrier)
 
   } #end for loop end cross validation
+  ibrier <- do.call(rbind, ibrier)
 
   return(ibrier)
 }

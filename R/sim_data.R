@@ -8,14 +8,14 @@
 #' @return simulated data
 #' @export
 #' @importFrom magrittr %>%
-surv_sim_data <- function( alpha = 0.8, mu = 0, N = 80, features = 1000, seed = 111, p = 0.25, cens_rate = 1) {
+surv_sim_data <- function(  mu = -3, alpha = 5,  N = 80, features = 1000, seed = 111, p = 0.25,  cens_rate = 1/10) {
   set.seed(seed)
 
 
   x<-matrix(rnorm(features*N),ncol= N)
   beta <- rnorm(round(features * p, 0 ))
 
-  survdata <- data.frame(surv_months = rweibull(n = N, alpha, exp(-(mu + svd(x[sample(1:N, size = round(N * p, 0 )),])$v[,1] + t(x)[, sample(1:features, size = length(beta) )] %*% beta  +  .1*rnorm(N))/alpha)),
+  survdata <- data.frame(surv_months = rweibull(n = N, alpha, exp(-(mu +  t(x)[, sample(1:features, size = length(beta) )] %*% beta )/alpha)),
                          censor_months = rexp(n = N, rate = cens_rate),
                          stringsAsFactors = F
   ) %>%
@@ -53,7 +53,7 @@ surv_sim_data <- function( alpha = 0.8, mu = 0, N = 80, features = 1000, seed = 
 sim_data <- function(mu, alpha, beta) {
   lambda = mu +  X %*% beta ;
 
-  data <- data.frame(surv_months = rweibull(n = N, alpha, exp(-(mu + svd(x[sample(1:N, size = round(N * p, 0 )),])$v[,1] + drop(t(x)[, sample(1:features, size = length(beta) )] %*% beta)  +  .1*rnorm(N))/alpha)),
+  data <- data.frame(surv_months = rweibull(n = N, alpha, exp(-(mu + svd(x[sample(1:N, size = round(N * p, 0 )),])$v[,1]  +  .1*rnorm(N))/alpha)),
                      censor_months = rexp(n = n, rate = 1/100),
                      stringsAsFactors = F
   ) %>%
