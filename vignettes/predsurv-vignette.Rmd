@@ -56,7 +56,7 @@ print(ibrier)
 ```
 Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
 ```{r}
-cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 20) 
+cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 10) 
 print(cv.ibrier.fs)
 ```
 
