@@ -12,8 +12,13 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
+#' @import partykit
+#' @import grid
+#' @import libcoin
+#' @import mvtnorm
+#' @import rpart
 
-fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
+fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" , tree_control = "Univariate"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -54,13 +59,40 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
             steps =  nrow(train)-2 ))
   }
 
-  if(fit == "random forest"){
-    mod <- party::cforest(form, data = traincoxphdata %>%
-                            dplyr::mutate(
-                              time   = !!time,
-                              status = !!status),
-                          control = cforest_unbiased(ntree = 50))
+  if(fit == "tree"){
+    ### with weight-dependent log-rank scores
+    ### log-rank trafo for observations in this node only (= weights > 0)
+    h <- function(y, x, start = NULL, weights, offset, estfun = TRUE, object = FALSE, ...) {
+      if (is.null(weights)) weights <- rep(1, NROW(y))
+      s <- coin::logrank_trafo(y[weights > 0,,drop = FALSE])
+      r <- rep(0, length(weights))
+      r[weights > 0] <- s
+      list(estfun = matrix(as.double(r), ncol = 1), converged = TRUE)
+    }
+
+    survtree_control <-
+      partykit::ctree_control(testtype = tree_control, maxdepth = 2)
+    mod <- partykit::ctree(form,
+                      data = traincoxphdata %>%
+                      dplyr::mutate(
+                          time   = !!time, status = !!status),
+                      ytrafo = h,
+                      control = survtree_control )
   }
+
+
+
+  if(fit == "random forest"){
+
+    # survtree_control <-
+    #   partykit::cforest_unbiased()
+    mod <- party::cforest(form,
+                           data = as.data.frame(traincoxphdata %>%
+                             dplyr::mutate(
+                              time   = !!time,
+                              status = !!status) ),
+                        cforest_control( ntree = 500) )
+    }
 
   return(mod)
 }
@@ -114,7 +146,7 @@ mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, t
   testX <- test_data %>% dplyr::select(-!!time, -!!status)
   selectedTestX <- testX[,colnames(testX) %in% names(nonzero.coef)]
   ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints <-  ndata %>% dplyr::select(!!time) %>%  unlist
+  timepoints <-  sort(unique(ndata %>% dplyr::select(!!time) %>% unlist))
 
   probs = pec::predictSurvProb(mod, newdata = ndata, times = timepoints)
   print(probs)
@@ -150,7 +182,7 @@ fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_mo
   testX <- test_data %>% dplyr::select(-!!time, -!!status)
   selectedTestX <- testX[,nonzero.coef]
   ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints <-  ndata %>% dplyr::select(!!time) %>% unlist
+  timepoints <-  sort(unique(ndata %>% dplyr::select(!!time) %>% unlist))
 
   brier <- pec::pec(pred, Surv(time, status) ~ 1, data = ndata %>% dplyr::mutate(
     time   = !!time,
@@ -197,20 +229,12 @@ fun_ibrier_score <- function(brier){
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 
-random_forest_plot <- function(bst){
-
-  ### if you can't resist to look at individual trees ...
-  party:::prettytree(bst@ensemble[[1]], names(bst@data@get("input")))
-
+print_random_forest <- function(forest = bst){
+  print(partykit::gettree(bst))
 }
-
-
-
-
-#' Cox Model Prediction
+#' Var importance
 #'
-#' This function takes a survival fit and following the Cox model, estimates the hazard for individual from the model coefficient, while the baseline hazard is estimated with the Nelson-Aalen method.
-#'
+#' Plot Fitted Individual Tree
 #' @param
 #' obj : survival model object for example a glmnet fit. \cr
 #' coef: coefficient beta is the default. \cr
@@ -220,58 +244,64 @@ random_forest_plot <- function(bst){
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
+
+var_importance <- function(forest = bst, type = "Permutation"){
+  randomForest::importance(bst, type = 2)
+}
+
+
+
+
+
+#' Plot Cox Model Prediction
+#'
+#' This function takes a survival fit and plots, right now only works with factor
+#'
+#' @param
+#' data : survival dataset \cr
+#' ... : covariates to evaluate
+#' @return a coxph fit object
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom rlang !!
+#' @importFrom rlang !!!
 #' @import prodlim
-pred_surv <- function(obj, time = os_months, status = os_deceased, beta = beta, test_data = test, train_data = train){
+#' @examples http://staff.pubhealth.ku.dk/~tag/Teaching/share/R-tutorials/SurvivalAnalysis.html
+
+plot_cox_pred <- function(train_data=train, time = os_months, status = os_deceased,  ...){
+
+  my_var <- dplyr::quos(...)
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
-  # take optimal beta from model object
-  optimal.beta <- beta(obj)
-  # find non zero beta coef
-  nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
-  selectedBeta <- optimal.beta[nonzero.coef]
+  X <- train_data %>% dplyr::select(!!!my_var)
 
-  # take only covariates for which beta is not zero
-  trainX <- train_data %>% dplyr::select(-!!time, -!!status)
-  selectedTrainX   <- trainX[,nonzero.coef]
+  form <- as.formula(paste("Hist(time, status)", paste("~", paste( colnames(X), collapse = " + "), sep = " " )))
 
-  traincoxphdata <- cbind(train_data %>% dplyr::select(!!time, !!status), selectedTrainX)
+  print(form)
 
-  #create formula
-  testBeta <- paste(names(selectedBeta), collapse = " + ")
-
-  surv.formula <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
-
-  # create coxph object with pre-defined coefficients
-  coxph.model<- coxph(surv.formula ,init=selectedBeta,iter=0, data = traincoxphdata %>% dplyr::mutate(
+  #library(pec)
+  km.grade <- prodlim::prodlim(form,
+    data = train_data %>% dplyr::mutate(
     time = !!time,
     status = !!status))
 
-  # take test covariates for which beta is not zero
-  testX <- test_data %>% dplyr::select(-!!time, -!!status)
-  selectedTestX <- testX[,nonzero.coef]
-  ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
+  cox.grade <- survival::coxph(form,
+    data = train_data %>% dplyr::mutate(
+    time = !!time,
+    status = !!status) ,x=TRUE,y=TRUE)
 
-  pred_ibrier = pec::pec(list(coxph.model),
-                         data = ndata %>%
-                           dplyr::mutate(
-                             time = !!time,
-                             status = !!status),
-                         formula=Surv(time,status)~1)
-
-
-  #
-  #
-  # pred_coxph <- predict(coxph.model,
-  #                      newdata = ndata %>%
-  #                        dplyr::mutate(
-  #                        time = !!time,
-  #                        status = !!status))
-  #
-  #   surv_pred <- data.frame(time = test %>% select(!!time) %>% unlist,
-  #                           surv_prob = exp(-pred_coxph))
-
-
-  return(pred_ibrier)
-}
+  newdata <- data.frame(feature270 = c(1,0,-1),
+                        feature350 = c(1,0,-1),
+                        )
+  ## first show Kaplan-Meier without confidence limits
+  plot(km.grade, lty=1, lwd=3,
+       col=c("darkgreen","darkorange","red"), confint=FALSE)
+  ## now add survival estimates based on Cox regression
+  pec::plotPredictSurvProb(cox.grade, lty=2,
+                      col=c("darkgreen","darkorange","red"),
+                      add=TRUE, sort(unique(train_data %>% dplyr::select(!!time) %>% unlist)),
+                      newdata=newdata)
+  mtext("Comparison of univariate  Cox regression and stratified Kaplan-Meier")
+  }
 

@@ -8,12 +8,12 @@
 #' @return simulated data
 #' @export
 #' @importFrom magrittr %>%
-surv_sim_data <- function(  mu = -3, alpha = 5,  N = 80, features = 1000, seed = 111, p = 0.25,  cens_rate = 1/10) {
+surv_sim_data <- function(  mu = -3, alpha = 5,  N = 80, features = 100, seed = 111, p = 0.25,  cens_rate = 1/10) {
   set.seed(seed)
 
 
   x<-matrix(rnorm(features*N),ncol= N)
-  beta <- rnorm(round(features * p, 0 ))
+  beta <- rnorm(round(features * p, 0 ), mean = 1, sd = 10)
 
   survdata <- data.frame(surv_months = rweibull(n = N, alpha, exp(-(mu +  t(x)[, sample(1:features, size = length(beta) )] %*% beta )/alpha)),
                          censor_months = rexp(n = N, rate = cens_rate),

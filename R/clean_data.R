@@ -41,6 +41,7 @@ plot_na <- function(d){
 #' @return d a clean dataset
 #' @export
 #' @importFrom magrittr %>%
+#' @importFrom rlang !!!
 drop_na <- function(d, ..., time = os_months, n = NA){
   fit_var <- dplyr::quos(...)
   time <- dplyr::enquo(time)

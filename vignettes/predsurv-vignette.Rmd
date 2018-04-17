@@ -30,7 +30,7 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 
 ```{r}
-survdata <- surv_sim_data(N = 250, features = 500, cens_rate = 1)
+survdata <- surv_sim_data(N = 250, features = 500, cens_rate = 1/10)
 plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
 ```
 
@@ -60,14 +60,12 @@ cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 10)
 print(cv.ibrier.fs)
 ```
 
-Now we can plot the predictions of the model using the function survfit, we also can make use of the "then" operator from magrittr "%>%":
+Now we can plot the predictions of the model using the function survfit:
 ```{r}
 pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
 ```
 
 This looks like the forward stepwise method is performing poorly, lets see a plot comparing this two:
-
-
 
 Another method is the dimension reduction obtained by using supervised principal components:
 
@@ -92,13 +90,23 @@ plot(lasso_cv_fit)
 
 
 
-Lets consider now the random forest we can fit the model with.
+It is argued that survival trees might have better performance than other regression methods. We can fit a regression tree to our simulated data with:
+
 ```{r}
-mod.bst = fun_fit(train, fit = "random forest")
-random_forest_plot(mod.bst)
+stree = fun_fit(train, fit = "tree")
+plot(stree)
 ```
 
+Nevertheless, decision trees can create overcomplex trees that don't generalise well. On the other hand it has been argued that the correction method of Bonferroni is too restrictive in DNA microarray data. Instead, a regularise univariate method with restricted maximum depth is used.
 
+We have said that ensemble methods such as random forest may give better prediction:
+
+```{r}
+bst = fun_fit(train, fit = "random forest")
+
+party::varimp(bst,
+conditional = TRUE)
+```
 
 ```{r}
 nx = as.matrix(test %>% dplyr::select(dplyr::contains("feature")))

@@ -4,7 +4,7 @@
 \alias{surv_sim_data}
 \title{Simulate data, function 1 with Weibull distribution.}
 \usage{
-surv_sim_data(mu = -3, alpha = 5, N = 80, features = 1000, seed = 111,
+surv_sim_data(mu = -3, alpha = 5, N = 80, features = 100, seed = 111,
   p = 0.25, cens_rate = 1/10)
 }
 \arguments{

@@ -27,7 +27,8 @@ Imports:
 		eply,
 		stats,
 		mgcv,
-		party
+		party,
+		partykit
 RoxygenNote: 6.0.1
 Suggests: knitr,
     rmarkdown
