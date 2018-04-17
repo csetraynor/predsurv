@@ -30,7 +30,7 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 
 ```{r}
-survdata <- surv_sim_data(N = 250, features = 500, cens_rate = 1/10)
+survdata <- surv_sim_data(N = 100, features = 250)
 plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
 ```
 
@@ -43,9 +43,8 @@ head(train[,1:6])
 
 We will first fit a subset selection method, for example the forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.fs.coxph = fun_fit(train, fit = "stepwise")
-pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
-brier_score = fun_brier_score(obj = mod.fs.coxph, pred = pred.fs.coxph, data = test , beta = coef)
+mod.fs = fun_fit(train, fit = "stepwise")
+brier_score = pred_error(obj = mod.fs, fit = "stepwise")
 plot_brier(brier_score)
 ```
 
@@ -54,42 +53,45 @@ Now we can obtain the cumulative prediction error curve or integrated Brier Scor
 ibrier = fun_ibrier_score(brier_score)
 print(ibrier)
 ```
-Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
-```{r}
-cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 10) 
-print(cv.ibrier.fs)
-```
 
-Now we can plot the predictions of the model using the function survfit:
-```{r}
-pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
-```
 
-This looks like the forward stepwise method is performing poorly, lets see a plot comparing this two:
+Another method is the dimension reduction obtained by using supervised principal components and partial least square regression. 
 
-Another method is the dimension reduction obtained by using supervised principal components:
+##Partial Least square
 
 ```{r}
-
-x <- as.matrix(train %>% dplyr::select(dplyr::contains("feature")))
-y <- as.matrix(train %>% 
-                 dplyr::mutate(status = os_status == "DECEASED" ,
-                               time = os_months) %>%
-                 dplyr::select(time, status) )
+mod.pls = fun_fit(train, fit = "PLS")
+brier_score = pred_error(obj = mod.pls, fit = "PLS")
 ```
+
+##Lasso
 
 Another method we have talked about is the penalised likelihood methods ridge regression and Lasso.
 
 ```{r}
-lasso_cv_fit <- glmnet::cv.glmnet(x, y , family = "cox", fold = 10)
+mod.lasso = fun_fit(train, fit = "lasso")
+plot(mod.lasso)
+```
+
+We can view the optimal $\lambda$ value. The left vertical line shows where the CV error hits its minimum. The right vertical line shows the most regularized model within 1 standard deviation of the minimum.
+
+```{r}
+brier_score = pred_error(obj = mod.lasso, fit = "lasso", pred = "Brier")
+
+plot_brier(brier_score)
 ```
 
 ```{r}
-plot(lasso_cv_fit)
+ibrier = fun_ibrier_score(brier_score)
+print(ibrier)
 ```
 
+##time dependent ROC
 
-
+```{r}
+roc = pred_error(obj = mod.lasso, fit = "lasso", pred = "ROC")
+tdROC::plot.tdROC(roc)
+```
 It is argued that survival trees might have better performance than other regression methods. We can fit a regression tree to our simulated data with:
 
 ```{r}
@@ -103,10 +105,38 @@ We have said that ensemble methods such as random forest may give better predict
 
 ```{r}
 bst = fun_fit(train, fit = "random forest")
-
-party::varimp(bst,
-conditional = TRUE)
 ```
+
+Let's calculate the Brier score:
+```{R}
+brier_score = pred_error(obj = bst, fit = "random forest", pred = "Brier")
+plot_brier(brier_score)
+```
+
+```{r}
+ibrier = fun_ibrier_score(brier_score)
+print(ibrier)
+```
+
+Experimental feature in survival analysis:
+```{R}
+var_imp(bst)
+```
+
+
+
+Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
+```{r}
+cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 10) 
+print(cv.ibrier.fs)
+```
+
+Now we can plot the predictions of the model using the function survfit:
+```{r}
+pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
+```
+
+This looks like the forward stepwise method is performing poorly, lets see a plot comparing this two:
 
 ```{r}
 nx = as.matrix(test %>% dplyr::select(dplyr::contains("feature")))

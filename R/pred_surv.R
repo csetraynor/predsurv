@@ -46,7 +46,7 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
       k = 2
     }else{
       if(penalty == "BIC"){
-        k = log(length(names(trainX)))
+        k = log(nrow(trainX))
       }
     }
 
@@ -56,7 +56,14 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
             trace = FALSE,
             direction = method,
             k = k,
-            steps =  nrow(train)-2 ))
+            steps =  nrow(train)-1 ))
+  }
+
+  if(fit == "lasso"){
+    x <- as.matrix(trainX)
+    y <- as.matrix(train %>%
+                     dplyr::select(time = !!time, status = !!status), ncol = 2)
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox")
   }
 
   if(fit == "tree"){
@@ -71,8 +78,8 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
     }
 
     survtree_control <-
-      partykit::ctree_control(testtype = tree_control, maxdepth = 2)
-    mod <- partykit::ctree(form,
+      party::ctree_control(testtype = tree_control, maxdepth = 2)
+    mod <- party::ctree(form,
                       data = traincoxphdata %>%
                       dplyr::mutate(
                           time   = !!time, status = !!status),
@@ -83,16 +90,24 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 
 
   if(fit == "random forest"){
+    train_tree <- as.data.frame(traincoxphdata %>%
+                    dplyr::mutate(
+                      time   = !!time,
+                      status = !!status) )
+    forest_control <- party::cforest_unbiased(n = 500)
 
-    # survtree_control <-
-    #   partykit::cforest_unbiased()
-    mod <- party::cforest(form,
-                           data = as.data.frame(traincoxphdata %>%
-                             dplyr::mutate(
-                              time   = !!time,
-                              status = !!status) ),
-                        cforest_control( ntree = 500) )
-    }
+    mod <- pec::pecCforest(form,
+                           data = train_tree,
+                          controls = forest_control)
+  }
+
+  if(fit == "PLS"){
+    X_train <- apply((as.matrix(trainX)),FUN="as.numeric",MARGIN=2)
+    Y_train <- train %>% dplyr::select(time = !!time) %>% unlist
+    C_train <- train %>% dplyr::select(status = !!status) %>% unlist
+
+    mod <- plsRcox::plsRcox(X_train,Y_train,C_train,nt=6)
+  }
 
   return(mod)
 }
@@ -105,53 +120,101 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 #' coef: coefficient beta is the default. \cr
 #' new_data: a test holdout dataframe default test\cr
 #' train_data : train dataframe default train\cr
+#' pred : prediction error Brier, ROC or C-Index
+#' adapted : in Lasso allows to swap to "adapated Lasso", otherwise will take usual lasso \cr
 #' @return a coxph fit object
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, test_data = test, train_data = train, fit = "stepwise"){
+pred_error <- function(obj, train_data = train, test_data = test, time = os_months, status = os_deceased,  pred = "Brier", fit = "stepwise", adapted = "default"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
-  # take optimal beta from model object
-  optimal.beta <- beta(obj)
-  # find non zero beta coef
-  nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
-  selectedBeta <- optimal.beta[nonzero.coef]
-
-  # take only covariates for which beta is not zero
-  trainX <- train_data %>% dplyr::select(-!!time, -!!status)
-  selectedTrainX   <- trainX[,colnames(trainX) %in% names(nonzero.coef)]
-
-  traincoxphdata <- cbind(train_data %>% dplyr::select(!!time, !!status), selectedTrainX)
-
-  #create formula
-  testBeta <- paste(names(selectedBeta), collapse = " + ")
-
-  form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
-
   # create coxph object with pre-defined coefficients
-  if(fit == "stepwise"){
-    mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
-      time = !!time,
-      status = !!status))
+  if(fit == "stepwise" | fit == "lasso" | fit == "random forest" | fit == "PLS"){
+
+    if(fit == "stepwise"){
+      # take optimal beta from model object
+      optimal.beta <- coef(obj)
+      # find non zero beta coef
+      nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
+      selectedBeta <- optimal.beta[nonzero.coef]
+    }
+
+    if(fit == "lasso"){
+      # find lambda for which dev.ratio is max
+      optimal.coef <- as.matrix(coef(obj, s = "lambda.min") )
+      selectedBeta <-  optimal.coef[optimal.coef != 0,]
+    }
+    if(fit == "random forest" | fit == "PLS"){
+      mod <- obj;
+      selectedBeta <- train %>% dplyr::select(-!!time, -!!status)
+    }
+
+    # take only covariates for which beta is not zero
+    trainX <- train_data %>% dplyr::select(-!!time, -!!status)
+    selectedTrainX   <- trainX[,colnames(trainX) %in% names(selectedBeta)]
+
+    traincoxphdata <- cbind(train_data %>% dplyr::select(!!time, !!status), selectedTrainX)
+
+    #create formula
+    testBeta <- paste(names(selectedBeta), collapse = " + ")
+    form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
+
+    if(fit == "stepwise" | adapted == "adapted lasso"){
+      #Fit model
+      mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
+        time = !!time,
+        status = !!status))
+    }
+
+    if(fit == "lasso"){
+      #Fit model
+      mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
+        time = !!time,
+        status = !!status), init = selectedBeta, iter = 0)
+    }
+
+    # Create test vars
+    testX <- test_data %>% dplyr::select(-!!time, -!!status)
+    selectedTestX <- testX[,colnames(testX) %in% names(selectedBeta)]
+    ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
+
+    #grid of equidistant time points
+    timepoints <-  seq(0, max(train_data %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
+
+
+    if(pred == "Brier"){
+      if(fit == "PLS"){
+      probs <- predict(mod, newdata = testX , type = "expected")
+      print(probs)
+    }else{
+        #Calculate probs
+        probs <- pec::predictSurvProb(mod, newdata = ndata, type = "expected")
+    }
+      #Calculate brier score
+      out <- pec::pec(probs, Surv(time, status) ~ 1,
+            data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
+            maxtime = max(timepoints),
+            exact = F,
+            exactness = 99L)
+    }
+    if(pred == "ROC"){
+      probs <- predict(mod, newdata = testX, type = "lp")
+      out <- tdROC::tdROC(X = probs,
+                          Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
+                    delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
+                          tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87),
+                    nboot = 10
+      )
+    }
+
   }else{
-    mod <- coxph(form , data = traincoxphdata %>% dplyr::mutate(
-      time = !!time,
-      status = !!status), init=selectedBeta, iter=0)
+    print("Not allowed fit argument")
   }
 
-  # take test covariates for which beta is not zero
-  testX <- test_data %>% dplyr::select(-!!time, -!!status)
-  selectedTestX <- testX[,colnames(testX) %in% names(nonzero.coef)]
-  ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints <-  sort(unique(ndata %>% dplyr::select(!!time) %>% unlist))
-
-  probs = pec::predictSurvProb(mod, newdata = ndata, times = timepoints)
-  print(probs)
-
-  return(probs)
+  return(out)
 }
 
 
@@ -168,7 +231,7 @@ mod_pred <- function(obj, time = os_months, status = os_deceased, beta = beta, t
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_months, status = os_deceased,  test_data = test, beta = beta){
+fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_months, status = os_deceased,  test_data = test, beta = beta, train_data = train){
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -182,11 +245,13 @@ fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_mo
   testX <- test_data %>% dplyr::select(-!!time, -!!status)
   selectedTestX <- testX[,nonzero.coef]
   ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints <-  sort(unique(ndata %>% dplyr::select(!!time) %>% unlist))
+  timepoints <-  seq(0, max(train_data %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
 
-  brier <- pec::pec(pred, Surv(time, status) ~ 1, data = ndata %>% dplyr::mutate(
-    time   = !!time,
-    status = !!status), maxtime = max(timepoints), times = timepoints)
+  brier <- pec::pec(pred, Surv(time, status) ~ 1,
+    data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
+    maxtime = max(timepoints),
+    exact = F,
+    exactness = 99L)
 
 
   return(brier)
@@ -216,9 +281,9 @@ fun_ibrier_score <- function(brier){
 }
 
 
-#' Plot Random Forest
+#' Var Importance
 #'
-#' Plot Fitted Individual Tree
+#' Experimental var importance for survival trees
 #' @param
 #' obj : survival model object for example a glmnet fit. \cr
 #' coef: coefficient beta is the default. \cr
@@ -229,8 +294,9 @@ fun_ibrier_score <- function(brier){
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 
-print_random_forest <- function(forest = bst){
-  print(partykit::gettree(bst))
+var_imp <- function(obj){
+
+    plot(party::varimp(bst, conditional = TRUE)) #obtain variable importance
 }
 #' Var importance
 #'
