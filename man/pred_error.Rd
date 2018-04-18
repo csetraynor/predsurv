@@ -4,9 +4,9 @@
 \alias{pred_error}
 \title{Cox Model Prediction}
 \usage{
-pred_error(obj, train_data = train, test_data = test, time = os,
-  status = status, event_type = 1, pred = "Brier", fit = "stepwise",
-  adapted = "default")
+pred_error(obj, train_data = train, test_data = test, time = os_months,
+  status = os_deceased, event_type = 1, pred = "Brier",
+  fit = "Stepwise", adapted = "default")
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr
@@ -14,7 +14,7 @@ coef: coefficient beta is the default. \cr
 new_data: a test holdout dataframe default test\cr
 train_data : train dataframe default train\cr
 pred : prediction error Brier, ROC or C-Index
-adapted : in Lasso allows to swap to "adapated Lasso", otherwise will take usual lasso \cr}
+adapted : in Lasso allows to swap to "adapated Lasso", otherwise will take usual Lasso \cr}
 }
 \value{
 a coxph fit object

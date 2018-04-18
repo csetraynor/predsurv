@@ -7,8 +7,8 @@
 #' time : time variable \cr
 #' status : status variable \cr
 #' method: forward, backward or both \cr
-#' fit : fit model: "stepwise", "random forest"
-#' @return a coxph forward stepwise fit object
+#' fit : fit model: "Stepwise", "random forest"
+#' @return a coxph forward Stepwise fit object
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
@@ -18,7 +18,7 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_fit <- function(train, time = os, status = status, method = "forward", fit, penalty = "BIC" ){
+fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -48,7 +48,7 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
   names(mod) <- features
   }
 
-  if(fit == "stepwise"){
+  if(fit == "Stepwise"){
     # create coxph object
     fit1 <- suppressWarnings(survival::coxph(Surv(time, status)~1,
                             data = traincoxphdata %>% dplyr::mutate(
@@ -65,7 +65,7 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
       }
     }
 
-    #forward stepwise selection
+    #forward Stepwise selection
     mod <- suppressWarnings(MASS::stepAIC(fit1,
             scope = list(upper = testBeta, lower = ~1) ,
             trace = FALSE,
@@ -74,7 +74,7 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
             steps =  nrow(train)-1 ))
   }
 
-  if(fit == "lasso"){
+  if(fit == "Lasso"){
     x <- as.matrix(trainX)
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
@@ -90,21 +90,12 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
   if(fit == "tree"){
     ### with weight-dependent log-rank scores
     ### log-rank trafo for observations in this node only (= weights > 0)
-    h <- function(y, x, start = NULL, weights, offset, estfun = TRUE, object = FALSE, ...) {
-      if (is.null(weights)) weights <- rep(1, NROW(y))
-      s <- coin::logrank_trafo(y[weights > 0,,drop = FALSE])
-      r <- rep(0, length(weights))
-      r[weights > 0] <- s
-      list(estfun = matrix(as.double(r), ncol = 1), converged = TRUE)
-    }
-
     survtree_control <-
       party::ctree_control(testtype = "Univariate", maxdepth = 2)
     mod <- party::ctree(form,
                       data = traincoxphdata %>%
                       dplyr::mutate(
                           time   = !!time, status = !!status),
-                      ytrafo = h,
                       control = survtree_control )
   }
   if(fit == "random forest"){
@@ -120,11 +111,11 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
   }
 
   if(fit == "PLS"){
-    X_train <- apply((as.matrix(trainX)),FUN="as.numeric",MARGIN=2)
-    Y_train <- train %>% dplyr::select(time = !!time) %>% unlist
-    C_train <- train %>% dplyr::select(status = !!status) %>% unlist
+    X_train <- apply((as.matrix(trainX)), FUN="as.numeric",MARGIN = 2)
+    Y_train <- train %>% dplyr::select(time = !!time) %>% unlist %>% as.numeric
+    C_train <- train %>% dplyr::select(status = !!status) %>% unlist %>% as.integer
 
-    mod <- plsRcox::coxpls(X_train,Y_train,C_train,nt=6)
+    mod <- plsRcox::plsRcoxmodel.default(X_train, time = Y_train,event = C_train, nt=5)
   }
 
    if(fit == "PCR"){
@@ -150,24 +141,24 @@ fun_fit <- function(train, time = os, status = status, method = "forward", fit, 
 #' new_data: a test holdout dataframe default test\cr
 #' train_data : train dataframe default train\cr
 #' pred : prediction error Brier, ROC or C-Index
-#' adapted : in Lasso allows to swap to "adapated Lasso", otherwise will take usual lasso \cr
+#' adapted : in Lasso allows to swap to "adapated Lasso", otherwise will take usual Lasso \cr
 #' @return a coxph fit object
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-pred_error <- function(obj, train_data = train, test_data = test, time = os, status = status, event_type = 1,  pred = "Brier", fit = "stepwise", adapted = "default"){
+pred_error <- function(obj, train_data = train, test_data = test, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", fit = "Stepwise", adapted = "default"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
   # create coxph object with pre-defined coefficients
-  if(fit == "Univariate" | fit == "stepwise" | fit == "lasso" | fit == "random forest" | fit == "PLS" | fit == "PCR"){
+  if(fit == "Univariate" | fit == "Stepwise" | fit == "Lasso" | fit == "random forest" | fit == "PLS" | fit == "PCR"){
 
     if(fit == "Univariate"){
       selectedBeta <- obj
     }
 
-    if(fit == "stepwise"){
+    if(fit == "Stepwise"){
       # take optimal beta from model object
       optimal.beta <- coef(obj)
       # find non zero beta coef
@@ -175,7 +166,7 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os, sta
       selectedBeta <- optimal.beta[nonzero.coef]
     }
 
-    if(fit == "lasso"){
+    if(fit == "Lasso"){
       # find lambda for which dev.ratio is max
       optimal.coef <- as.matrix(coef(obj, s = "lambda.min") )
       selectedBeta <-  optimal.coef[optimal.coef != 0,]
@@ -187,6 +178,10 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os, sta
       }
       if(fit == "PCR"){
         selectedBeta <- mod$feature.scores
+      }
+      if(fit == "PLS"){
+        selectedBeta <- mod$Coeffs
+        names(selectedBeta) <- rownames(selectedBeta)
       }
     }
     if(length(selectedBeta) == 0){
@@ -203,18 +198,18 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os, sta
     testBeta <- paste(names(selectedBeta), collapse = " + ")
     form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
 
-    if(fit == "Univariate" | fit == "stepwise" | adapted == "adapted lasso"){
+    if(fit == "Univariate" | fit == "Stepwise" | adapted == "adapted Lasso"){
       #Fit model
-      mod <-  rms::cph(form , data = traincoxphdata %>% dplyr::mutate(
+      mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
-        status = !!status), surv = TRUE, x=TRUE, y=TRUE)
+        status = !!status))
     }
 
-    if(fit == "lasso" | fit == "PCR" | fit == "PLS"){
+    if(fit == "Lasso" | fit == "PCR" | fit == "PLS"){
       #Fit model
-      mod <-  rms::cph(form , data = traincoxphdata %>% dplyr::mutate(
+      mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
-        status = !!status), init = selectedBeta, iter = 0, surv = TRUE)
+        status = !!status), init = selectedBeta, iter = 0)
     }
 
     # Create test vars
@@ -240,25 +235,22 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os, sta
     }
     if(pred == "ROC"){
       probs <- predict(mod, newdata = testX, type = "lp")
+
       out <- tdROC::tdROC(X = probs,
         Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
          delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .67),
-  span = 0.1, nboot = 10, alpha = 0.05, n.grid = 1000, cut.off = 5:9
+  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87),
+   nboot = 10, alpha = 0.05, n.grid = 1000,  type = "Epanechnikov"
       )
-      attr(out, 'fit.model.roc') <- fit
     }
     if(pred == "c_index"){
-      surv.obj=with(ndata %>%
-          dplyr::mutate( time   = !!time, status = !!status),
-          Surv(time,status))
       ###Create your survival estimates
-      estimates= rms::survest(mod,newdata=testX,
-                              times = max(timepoints))$surv
-      ###Determine concordance
-      out <- Hmisc::rcorr.cens(x=estimates,S=surv.obj)
+      out <-  pec::cindex(mod, formula = Surv(time, status) ~ 1,
+                             data = ndata %>% dplyr::mutate(
+                             time   = !!time, status = !!status))
     }
-
+    attr(out, 'predction.of.model') <- fit
+    attr(out, 'number.of.individuals.cohort') <- nrow(train_data) + nrow(test_data)
   }else{
     print("Not allowed fit argument")
   }

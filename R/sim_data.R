@@ -8,7 +8,7 @@
 #' @return simulated data
 #' @export
 #' @importFrom magrittr %>%
-surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.2, CenRate = 1/100, init = FALSE) {
+surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.02, CenRate = 1/100, init = FALSE) {
 
   if(!init){
     X = matrix(rnorm(features*N, mean = 0, sd = 1),ncol=  features)
@@ -25,7 +25,7 @@ surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.2, CenRate
   }
 
   outdata <- data.frame(surv_months = rweibull(n = N,
-                 alpha,exp(- CenRate * (X %*% beta) /alpha)),
+                 alpha,exp(- (X %*% beta) /alpha)),
                          censor_months = rexp(n = N, rate = CenRate),
                          stringsAsFactors = F
   ) %>%
@@ -60,7 +60,7 @@ surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.2, CenRate
 #' @export
 #' @importFrom magrittr %>%
 
-Sim_data <- function(N, features, p = 0.2, horizon = 48, init = FALSE, seed = 111, CenRate = 1/100, smooth = 10, ...){
+Sim_data <- function(N, features, p = 0.02, horizon = 48, init = FALSE, seed = 111, CenRate = 1/100, smooth = 10, ...){
   # set.seed(seed)
     #Initiate vars
   if(!init){
@@ -82,13 +82,12 @@ Sim_data <- function(N, features, p = 0.2, horizon = 48, init = FALSE, seed = 11
   baseline<- as.vector(as.numeric(baseline))
   X <- array(matrix(as.numeric(X)), dim = c(N, features ))
   #prognostic index
-  mu = X %*% beta
-  print(mu)
+  mu = exp(X %*% beta)
   #extract first interval baseline hazard
   baseline0 <- baseline[1]
   #compute relative hazard for each interval respect to the first
-  rel_base_risk <- log(baseline/baseline0)
-  rel_risk = lapply(mu, "+" , rel_base_risk)
+  rel_base_risk <- baseline/baseline0
+  rel_risk = lapply(mu, "*" , rel_base_risk)
   #caculate duration
   dt = diff(tau)
   assertthat::assert_that(length(dt) == length(baseline))

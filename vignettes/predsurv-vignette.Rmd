@@ -30,12 +30,13 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 
 ```{r}
-survdata <- get_data()
-plot_km(hei, time = time, status = cens, event_type = 1)
+# data("survdata")
+survdata <- surv_sim_data(N = 400, features = 200, CenRate = 1/10)
+plot_km(survdata, time = os_months, status = os_deceased)
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8, status = status)
+fold = create_training_test_set(survdata, p = 0.8, status = os_deceased)
 train = fold[["train"]]
 test = fold[["test"]]
 head(train[,1:6]); rm(fold)
@@ -46,35 +47,38 @@ head(train[,1:6]); rm(fold)
 
 We will first fit a subset selection method, for example Univariate:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.uni = fun_fit(train, fit = "Univariate", time = os, status = status)
-uni.brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier", time = os, status = status)
+mod.uni = fun_fit(train, fit = "Univariate", time = os_months, status = os_deceased)
+uni.brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier", time = os_months, status = os_deceased)
 plot_brier(uni.brier_score)
 ```
 
 Calculate the c-index:
 ```{R}
-c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index", status = status, time = os)
+uni.c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index", status = os_deceased, time = os_months)
 print(uni.c_index)
 ```
 
 ```{r}
-uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC",  status = status, time = os)
+uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC",  status = os_deceased, time = os_months)
 tdROC::plot.tdROC(uni.roc)
 ```
 
 The forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.fs = fun_fit(train, fit = "stepwise")
-fs.brier_score = pred_error(obj = mod.fs, fit = "stepwise")
-plot_brier(brier_score)
+mod.fs = fun_fit(train, fit = "Stepwise")
+fs.brier_score = pred_error(obj = mod.fs, fit = "Stepwise")
+plot_brier(fs.brier_score)
 ```
 
 Now we can obtain the cumulative prediction error curve or integrated Brier Score :
 ```{r}
-ibrier = fun_ibrier_score(brier_score)
+ibrier = fun_ibrier_score(fs.brier_score)
 print(ibrier)
 ```
-
+```{r}
+fs.roc = pred_error(obj = mod.fs, fit = "Stepwise", pred = "ROC",  status = os_deceased, time = os_months)
+tdROC::plot.tdROC(fs.roc)
+```
 
 Another method is the dimension reduction obtained by using supervised principal components and partial least square regression. 
 
@@ -87,7 +91,12 @@ plot_brier(pcr.brier_score)
 ```
 
 ```{r}
-ibrier = fun_ibrier_score(brier_score)
+pcr.roc = pred_error(obj = mod.pcr, fit = "PCR", pred = "ROC")
+tdROC::plot.tdROC(pcr.roc)
+```
+
+```{r}
+ibrier = fun_ibrier_score(pcr.brier_score)
 print(ibrier)
 ```
 
@@ -95,7 +104,13 @@ print(ibrier)
 
 ```{r}
 mod.pls = fun_fit(train, fit = "PLS")
-brier_score = pred_error(obj = mod.pls, fit = "PLS")
+```
+
+
+```{R}
+pls.brier_score = pred_error(obj = mod.pls, fit = "PLS")
+pls.roc = pred_error(obj = mod.pls, fit = "PLS", pred = "ROC")
+tdROC::plot.tdROC(pls.roc)
 ```
 
 ##Lasso
@@ -103,28 +118,28 @@ brier_score = pred_error(obj = mod.pls, fit = "PLS")
 Another method we have talked about is the penalised likelihood methods ridge regression and Lasso.
 
 ```{r}
-mod.lasso = fun_fit(train, fit = "lasso")
-plot(mod.lasso)
+mod.Lasso = fun_fit(train, fit = "Lasso")
+plot(mod.Lasso)
 ```
 
 We can view the optimal $\lambda$ value. The left vertical line shows where the CV error hits its minimum. The right vertical line shows the most regularized model within 1 standard deviation of the minimum.
 
 ```{r}
-brier_score = pred_error(obj = mod.lasso, fit = "lasso", pred = "Brier")
+Lasso.brier_score = pred_error(obj = mod.lasso, fit = "Lasso", pred = "Brier")
 
-plot_brier(brier_score)
+plot_brier(Lasso.brier_score)
 ```
 
 ```{r}
-ibrier = fun_ibrier_score(brier_score)
-print(ibrier)
+Lasso.ibrier = fun_ibrier_score(Lasso.brier_score)
+print(Lasso.ibrier)
 ```
 
 ##time dependent ROC
 
 ```{r}
-lasso.roc = pred_error(obj = mod.lasso, fit = "lasso", pred = "ROC")
-tdROC::plot.tdROC(lasso.roc)
+Lasso.roc = pred_error(obj = mod.Lasso, fit = "Lasso", pred = "ROC")
+tdROC::plot.tdROC(Lasso.roc)
 ```
 It is argued that survival trees might have better performance than other regression methods. We can fit a regression tree to our simulated data with:
 
@@ -143,14 +158,15 @@ bst = fun_fit(train, fit = "random forest")
 
 Let's calculate the Brier score:
 ```{R}
-brier_score = pred_error(obj = bst, fit = "random forest", pred = "Brier")
-plot_brier(brier_score)
+bst.brier_score = pred_error(obj = bst, fit = "random forest", pred = "Brier")
+plot_brier(bst.brier_score)
 ```
 
 ```{r}
-ibrier = fun_ibrier_score(brier_score)
+ibrier = fun_ibrier_score(bst.brier_score)
 print(ibrier)
 ```
+
 
 Experimental feature in survival analysis:
 ```{R}
@@ -159,13 +175,16 @@ var_imp(bst)
 
 Let's see a plot for more than one model:
 ```{R}
-roc.plot2(lasso.roc, uni.roc)
+roc.plot2(Lasso.roc, uni.roc, fs.roc, pcr.roc)
 ```
 
+```{r}
+plot_brier2(Lasso.brier_score, uni.brier_score, fs.brier_score, pcr.brier_score, bst.brier_score)
+```
 
 Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.
 ```{r}
-cv.ibrier.fs = fun_cv(data = survdata, model_selection = "stepwise", K = 10) 
+cv.ibrier.fs = fun_cv(data = survdata, model_selection = "Stepwise", K = 10) 
 print(cv.ibrier.fs)
 ```
 
@@ -174,11 +193,11 @@ Now we can plot the predictions of the model using the function survfit:
 pred.fs.coxph = mod_pred(obj = mod.fs.coxph, beta = coef)
 ```
 
-This looks like the forward stepwise method is performing poorly, lets see a plot comparing this two:
+This looks like the forward Stepwise method is performing poorly, lets see a plot comparing this two:
 
 ```{r}
 nx = as.matrix(test %>% dplyr::select(dplyr::contains("feature")))
-pred <- predict(lasso_cv_fit, newx = nx, s = "lambda.min")
+pred <- predict(Lasso_cv_fit, newx = nx, s = "lambda.min")
 ```
 
 ```{r}

@@ -4,18 +4,18 @@
 \alias{fun_fit}
 \title{Fit Forward Selection}
 \usage{
-fun_fit(train, time = os, status = status, method = "forward", fit,
-  penalty = "BIC")
+fun_fit(train, time = os_months, status = os_deceased, method = "forward",
+  fit, penalty = "BIC")
 }
 \arguments{
 \item{train}{: train data \cr
 time : time variable \cr
 status : status variable \cr
 method: forward, backward or both \cr
-fit : fit model: "stepwise", "random forest"}
+fit : fit model: "Stepwise", "random forest"}
 }
 \value{
-a coxph forward stepwise fit object
+a coxph forward Stepwise fit object
 }
 \description{
 Fit the Forward Selection method

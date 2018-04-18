@@ -4,7 +4,7 @@
 \alias{Sim_data}
 \title{Simulate data, function 1 with Weibull distribution.}
 \usage{
-Sim_data(N, features, p = 0.2, horizon = 48, init = FALSE, seed = 111,
+Sim_data(N, features, p = 0.02, horizon = 48, init = FALSE, seed = 111,
   CenRate = 1/100, smooth = 10, ...)
 }
 \arguments{
