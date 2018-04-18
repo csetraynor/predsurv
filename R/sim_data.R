@@ -16,7 +16,7 @@ surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.25,  rate 
   x_true <- x[,sample(1:ncol(x), length(beta) )]
   alpha = 1 + runif(1)
   outdata <- data.frame(surv_months = rweibull(n = N,
-                 alpha,exp(-rate *(  x_true %*% beta )/alpha)),
+                 alpha,exp(-rate * (  x_true %*% beta )/alpha)),
                          censor_months = rexp(n = N, rate = rate),
                          stringsAsFactors = F
   ) %>%

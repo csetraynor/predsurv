@@ -30,7 +30,7 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 
 ```{r}
-survdata <- surv_sim_data(N = 100, features = 250)
+survdata <- surv_sim_data(N = 100, features = 100)
 plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
 ```
 
@@ -41,7 +41,28 @@ test = fold[["test"]]
 head(train[,1:6])
 ```
 
-We will first fit a subset selection method, for example the forward step wise method can be fitted using the function stepAIC in the MASS package:
+
+
+
+We will first fit a subset selection method, for example Univariate:
+```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
+mod.uni = fun_fit(train, fit = "Univariate")
+brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier")
+plot_brier(brier_score)
+```
+
+Calculate the c-index:
+```{R}
+c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index")
+print(c_index)
+```
+
+```{r}
+uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC")
+tdROC::plot.tdROC(uni.roc)
+```
+
+The forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
 mod.fs = fun_fit(train, fit = "stepwise")
 brier_score = pred_error(obj = mod.fs, fit = "stepwise")
@@ -56,6 +77,19 @@ print(ibrier)
 
 
 Another method is the dimension reduction obtained by using supervised principal components and partial least square regression. 
+
+##Supervised Principal Components
+
+```{r}
+mod.pcr = fun_fit(train, fit = "PCR")
+brier_score = pred_error(obj = mod.pcr, fit = "PCR")
+plot_brier(brier_score)
+```
+
+```{r}
+ibrier = fun_ibrier_score(brier_score)
+print(ibrier)
+```
 
 ##Partial Least square
 
@@ -89,8 +123,8 @@ print(ibrier)
 ##time dependent ROC
 
 ```{r}
-roc = pred_error(obj = mod.lasso, fit = "lasso", pred = "ROC")
-tdROC::plot.tdROC(roc)
+lasso.roc = pred_error(obj = mod.lasso, fit = "lasso", pred = "ROC")
+tdROC::plot.tdROC(lasso.roc)
 ```
 It is argued that survival trees might have better performance than other regression methods. We can fit a regression tree to our simulated data with:
 
@@ -99,7 +133,7 @@ stree = fun_fit(train, fit = "tree")
 plot(stree)
 ```
 
-Nevertheless, decision trees can create overcomplex trees that don't generalise well. On the other hand it has been argued that the correction method of Bonferroni is too restrictive in DNA microarray data. Instead, a regularise univariate method with restricted maximum depth is used.
+Nevertheless, decision trees can create overcomplex trees that don't generalise well. On the other hand it has been argued that the correction method of Bonferroni is too restrictive in DNA microarray data. Instead, a regularise Univariate method with restricted maximum depth is used.
 
 We have said that ensemble methods such as random forest may give better prediction:
 
@@ -123,6 +157,10 @@ Experimental feature in survival analysis:
 var_imp(bst)
 ```
 
+Let's see a plot for more than one model:
+```{R}
+roc.plot2(lasso.roc, uni.roc)
+```
 
 
 Moreover we are interested in the prediction error for different training/test splits. Thus, we will compute the CV error as a measure of error.

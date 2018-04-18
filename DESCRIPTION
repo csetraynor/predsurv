@@ -14,7 +14,6 @@ Imports:
 		cgdsr,
 		caret,
 		dplyr,
-		VIM,
 		rlang,
 		magrittr,
 		assertthat,
@@ -28,7 +27,8 @@ Imports:
 		stats,
 		mgcv,
 		party,
-		partykit
+		partykit,
+		superpc
 RoxygenNote: 6.0.1
 Suggests: knitr,
     rmarkdown

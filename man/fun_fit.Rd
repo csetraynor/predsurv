@@ -5,7 +5,7 @@
 \title{Fit Forward Selection}
 \usage{
 fun_fit(train, time = os_months, status = os_deceased, method = "forward",
-  fit, penalty = "BIC", tree_control = "Univariate")
+  fit, penalty = "BIC")
 }
 \arguments{
 \item{train}{: train data \cr

@@ -18,7 +18,7 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" , tree_control = "Univariate"){
+fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -32,6 +32,23 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 
 
    form <- as.formula(paste("Surv(time, status)", paste("~", paste(names(trainX), collapse = " + "), sep = " " )))
+
+  if(fit == "Univariate"){
+    reg <- function(indep_var,dep_var,data_source) {
+      formula <- as.formula(paste(dep_var," ~ ", indep_var))
+      res     <- survival::coxph(formula, data = data_source)
+      summary(res)
+    }
+  mod1 <- lapply(colnames(trainX), FUN = reg, dep_var = "Surv(time, status)", data_source = traincoxphdata %>% dplyr::mutate(
+    time   = !!time,
+    status = !!status) )
+  mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.01]$coefficients)
+  mod2[sapply(mod2, is.null)] <- NULL
+  features <- sapply(mod2, function(p) rownames(p))
+  coefficients <- sapply(mod2, function(p) p[,1])
+  mod <- t(data.frame(coef = coefficients))
+  names(mod) <- features
+  }
 
   if(fit == "stepwise"){
     # create coxph object
@@ -65,6 +82,12 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     mod <-  glmnet::cv.glmnet(x, y, family = "cox")
   }
+   if(fit == "ridge"){
+     x <- as.matrix(trainX)
+     y <- as.matrix(train %>%
+                      dplyr::select(time = !!time, status = !!status), ncol = 2)
+     mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0) #alpha 0 ridge penalty
+   }
 
   if(fit == "tree"){
     ### with weight-dependent log-rank scores
@@ -78,7 +101,7 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
     }
 
     survtree_control <-
-      party::ctree_control(testtype = tree_control, maxdepth = 2)
+      party::ctree_control(testtype = "Univariate", maxdepth = 2)
     mod <- party::ctree(form,
                       data = traincoxphdata %>%
                       dplyr::mutate(
@@ -86,9 +109,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
                       ytrafo = h,
                       control = survtree_control )
   }
-
-
-
   if(fit == "random forest"){
     train_tree <- as.data.frame(traincoxphdata %>%
                     dplyr::mutate(
@@ -106,8 +126,19 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
     Y_train <- train %>% dplyr::select(time = !!time) %>% unlist
     C_train <- train %>% dplyr::select(status = !!status) %>% unlist
 
-    mod <- plsRcox::plsRcox(X_train,Y_train,C_train,nt=6)
+    mod <- plsRcox::coxpls(X_train,Y_train,C_train,nt=6)
   }
+
+   if(fit == "PCR"){
+     X_train <- apply((as.matrix(trainX)),FUN="as.numeric",MARGIN=2)
+     X_train <- t(X_train)
+     Y_train <- train %>% dplyr::select(time = !!time) %>% unlist
+     C_train <- train %>% dplyr::select(status = !!status) %>% unlist
+     featurenames <- colnames(trainX)
+     data<-list(x=X_train,y=Y_train, censoring.status=C_train, featurenames=featurenames)
+
+     mod <- superpc::superpc.train(data, type="survival")
+   }
 
   return(mod)
 }
@@ -132,7 +163,11 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
   status <- dplyr::enquo(status)
 
   # create coxph object with pre-defined coefficients
-  if(fit == "stepwise" | fit == "lasso" | fit == "random forest" | fit == "PLS"){
+  if(fit == "Univariate" | fit == "stepwise" | fit == "lasso" | fit == "random forest" | fit == "PLS" | fit == "PCR"){
+
+    if(fit == "Univariate"){
+      selectedBeta <- obj
+    }
 
     if(fit == "stepwise"){
       # take optimal beta from model object
@@ -147,11 +182,19 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
       optimal.coef <- as.matrix(coef(obj, s = "lambda.min") )
       selectedBeta <-  optimal.coef[optimal.coef != 0,]
     }
-    if(fit == "random forest" | fit == "PLS"){
+    if(fit == "random forest" | fit == "PLS" | fit == "PCR"){
       mod <- obj;
-      selectedBeta <- train %>% dplyr::select(-!!time, -!!status)
+      if(fit == "random forest"){
+        selectedBeta <- train %>% dplyr::select(-!!time, -!!status)
+      }
+      if(fit == "PCR"){
+        selectedBeta <- mod$feature.scores
+      }
     }
-
+    if(length(selectedBeta) == 0){
+      selectedBeta <- 1;
+      names(selectedBeta) <- "Null"
+    }
     # take only covariates for which beta is not zero
     trainX <- train_data %>% dplyr::select(-!!time, -!!status)
     selectedTrainX   <- trainX[,colnames(trainX) %in% names(selectedBeta)]
@@ -162,18 +205,18 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
     testBeta <- paste(names(selectedBeta), collapse = " + ")
     form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
 
-    if(fit == "stepwise" | adapted == "adapted lasso"){
+    if(fit == "Univariate" | fit == "stepwise" | adapted == "adapted lasso"){
       #Fit model
-      mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
+      mod <-  rms::cph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
-        status = !!status))
+        status = !!status), surv = TRUE, x=TRUE, y=TRUE)
     }
 
-    if(fit == "lasso"){
+    if(fit == "lasso" | fit == "PCR"){
       #Fit model
-      mod <-  coxph(form , data = traincoxphdata %>% dplyr::mutate(
+      mod <-  rms::cph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
-        status = !!status), init = selectedBeta, iter = 0)
+        status = !!status), init = selectedBeta, iter = 0, surv = TRUE)
     }
 
     # Create test vars
@@ -184,15 +227,10 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
     #grid of equidistant time points
     timepoints <-  seq(0, max(train_data %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
 
-
     if(pred == "Brier"){
-      if(fit == "PLS"){
-      probs <- predict(mod, newdata = testX , type = "expected")
-      print(probs)
-    }else{
-        #Calculate probs
-        probs <- pec::predictSurvProb(mod, newdata = ndata, type = "expected")
-    }
+      #Calculate probs
+      probs <- pec::predictSurvProb(mod,
+                      newdata = ndata, times = timepoints)
       #Calculate brier score
       out <- pec::pec(probs, Surv(time, status) ~ 1,
             data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
@@ -203,11 +241,22 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
     if(pred == "ROC"){
       probs <- predict(mod, newdata = testX, type = "lp")
       out <- tdROC::tdROC(X = probs,
-                          Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
-                    delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-                          tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87),
-                    nboot = 10
+        Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
+         delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
+  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .67),
+  span = 0.1, nboot = 10, alpha = 0.05, n.grid = 1000, cut.off = 5:9
       )
+      attr(out, 'fit.model.roc') <- fit
+    }
+    if(pred == "c_index"){
+      surv.obj=with(ndata %>%
+          dplyr::mutate( time   = !!time, status = !!status),
+          Surv(time,status))
+      ###Create your survival estimates
+      estimates= rms::survest(mod,newdata=testX,
+                              times = max(timepoints))$surv
+      ###Determine concordance
+      out <- Hmisc::rcorr.cens(x=estimates,S=surv.obj)
     }
 
   }else{
@@ -215,47 +264,6 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
   }
 
   return(out)
-}
-
-
-#' Brier Score
-#'
-#' Predict integration Brier Score in a new dataset.
-#' @param
-#' obj : survival model object for example a glmnet fit. \cr
-#' coef: coefficient beta is the default. \cr
-#' new_data: a test holdout dataframe default test\cr
-#' train_data : train dataframe default train\cr
-#' @return a coxph fit object
-#' @export
-#' @importFrom magrittr %>%
-#' @importFrom rlang !!
-#' @import prodlim
-fun_brier_score <- function(obj = mod.fs.coxph, pred=pred.fs.coxph, time = os_months, status = os_deceased,  test_data = test, beta = beta, train_data = train){
-
-  time <- dplyr::enquo(time)
-  status <- dplyr::enquo(status)
-
-  # take optimal beta from model object
-  optimal.beta <- beta(obj)
-  # find non zero beta coef
-  nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
-
-  # take test covariates for which beta is not zero
-  testX <- test_data %>% dplyr::select(-!!time, -!!status)
-  selectedTestX <- testX[,nonzero.coef]
-  ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
-  timepoints <-  seq(0, max(train_data %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
-
-  brier <- pec::pec(pred, Surv(time, status) ~ 1,
-    data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
-    maxtime = max(timepoints),
-    exact = F,
-    exactness = 99L)
-
-
-  return(brier)
-
 }
 
 
@@ -368,6 +376,6 @@ plot_cox_pred <- function(train_data=train, time = os_months, status = os_deceas
                       col=c("darkgreen","darkorange","red"),
                       add=TRUE, sort(unique(train_data %>% dplyr::select(!!time) %>% unlist)),
                       newdata=newdata)
-  mtext("Comparison of univariate  Cox regression and stratified Kaplan-Meier")
+  mtext("Comparison of Univariate  Cox regression and stratified Kaplan-Meier")
   }
 
