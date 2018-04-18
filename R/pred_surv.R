@@ -18,7 +18,7 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
+fun_fit <- function(train, time = os, status = status, method = "forward", fit, penalty = "BIC" ){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -29,8 +29,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
   traincoxphdata <- cbind(train %>% dplyr::select(!!time, !!status), trainX)
 
   #create formula
-
-
    form <- as.formula(paste("Surv(time, status)", paste("~", paste(names(trainX), collapse = " + "), sep = " " )))
 
   if(fit == "Univariate"){
@@ -158,7 +156,7 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-pred_error <- function(obj, train_data = train, test_data = test, time = os_months, status = os_deceased,  pred = "Brier", fit = "stepwise", adapted = "default"){
+pred_error <- function(obj, train_data = train, test_data = test, time = os, status = status, event_type = 1,  pred = "Brier", fit = "stepwise", adapted = "default"){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
@@ -212,7 +210,7 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
         status = !!status), surv = TRUE, x=TRUE, y=TRUE)
     }
 
-    if(fit == "lasso" | fit == "PCR"){
+    if(fit == "lasso" | fit == "PCR" | fit == "PLS"){
       #Fit model
       mod <-  rms::cph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
@@ -225,7 +223,9 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
     ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
 
     #grid of equidistant time points
-    timepoints <-  seq(0, max(train_data %>% dplyr::select(!!time) %>% unlist), length.out = 100L)
+    timepoints <-  seq(0, max(train_data %>%
+                    dplyr::filter(!!status == event_type) %>%
+                    dplyr::select(!!time) %>% unlist), length.out = 100L)
 
     if(pred == "Brier"){
       #Calculate probs
@@ -366,7 +366,7 @@ plot_cox_pred <- function(train_data=train, time = os_months, status = os_deceas
     status = !!status) ,x=TRUE,y=TRUE)
 
   newdata <- data.frame(feature270 = c(1,0,-1),
-                        feature350 = c(1,0,-1),
+                        feature350 = c(1,0,-1)
                         )
   ## first show Kaplan-Meier without confidence limits
   plot(km.grade, lty=1, lwd=3,

@@ -30,15 +30,15 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 
 ```{r}
-survdata <- surv_sim_data(N = 100, features = 100)
-plot_km(survdata, time = os_months, status = os_deceased, event_type = 1)
+survdata <- get_data()
+plot_km(hei, time = time, status = cens, event_type = 1)
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8, status = os_deceased)
+fold = create_training_test_set(survdata, p = 0.8, status = status)
 train = fold[["train"]]
 test = fold[["test"]]
-head(train[,1:6])
+head(train[,1:6]); rm(fold)
 ```
 
 
@@ -46,26 +46,26 @@ head(train[,1:6])
 
 We will first fit a subset selection method, for example Univariate:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.uni = fun_fit(train, fit = "Univariate")
-brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier")
-plot_brier(brier_score)
+mod.uni = fun_fit(train, fit = "Univariate", time = os, status = status)
+uni.brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier", time = os, status = status)
+plot_brier(uni.brier_score)
 ```
 
 Calculate the c-index:
 ```{R}
-c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index")
-print(c_index)
+c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index", status = status, time = os)
+print(uni.c_index)
 ```
 
 ```{r}
-uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC")
+uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC",  status = status, time = os)
 tdROC::plot.tdROC(uni.roc)
 ```
 
 The forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
 mod.fs = fun_fit(train, fit = "stepwise")
-brier_score = pred_error(obj = mod.fs, fit = "stepwise")
+fs.brier_score = pred_error(obj = mod.fs, fit = "stepwise")
 plot_brier(brier_score)
 ```
 
@@ -82,8 +82,8 @@ Another method is the dimension reduction obtained by using supervised principal
 
 ```{r}
 mod.pcr = fun_fit(train, fit = "PCR")
-brier_score = pred_error(obj = mod.pcr, fit = "PCR")
-plot_brier(brier_score)
+pcr.brier_score = pred_error(obj = mod.pcr, fit = "PCR")
+plot_brier(pcr.brier_score)
 ```
 
 ```{r}

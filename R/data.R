@@ -11,15 +11,15 @@
 #' @source \url{https://cancergenome.nih.gov/}
 "clinicaldata"
 
-#' Data Simulated for a Hypothetic Microarray experiment
+#' Microarray Dataset
 #'
-#' A dataframe containing the survival outcome and a gene expression matrix refere to data_sim_script to check the algorithm.
+#' Lung adenocarcinomas were profiled by Beer et al. (2002) using Affymetrix hu6800 microarrays. The data here were normalized from raw .CEL files by RMAExpress (v0.3). The expression matrix contains expression data for 86 patients with 7,129 probe sets.
 #'
-#' @format Gene expression matrix with 1000 rows and 40 columns, survival outcome data frame with 40 rows and 2 variables (time, censoring).
+#' @format Gene expression matrix and survival outcome data frame (time, cens).
 #' \describe{
-#'   \item{surv_months}{Actual survival months observed}
-#'   \item{censoring.status}{censoring indicator 1 observed, 0 censored}
-#'   \item{featurenames}{Hypothetic feature names in the gene expression matrix}
+#'   \item{time}{Actual survival months observed}
+#'   \item{cens}{censoring indicator 1 observed, 0 censored}
+#'   \item{featurenames}{feature names in the gene expression matrix}
 #'   ...
 #' }
 "survdata"

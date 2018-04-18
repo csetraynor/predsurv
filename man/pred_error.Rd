@@ -4,8 +4,8 @@
 \alias{pred_error}
 \title{Cox Model Prediction}
 \usage{
-pred_error(obj, train_data = train, test_data = test, time = os_months,
-  status = os_deceased, pred = "Brier", fit = "stepwise",
+pred_error(obj, train_data = train, test_data = test, time = os,
+  status = status, event_type = 1, pred = "Brier", fit = "stepwise",
   adapted = "default")
 }
 \arguments{
