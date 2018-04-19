@@ -47,7 +47,7 @@ head(train[,1:6]); rm(fold)
 
 We will first fit a subset selection method, for example Univariate:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.uni = fun_fit(train, fit = "Univariate", time = os_months, status = os_deceased)
+mod.uni = fun_train(train, fit = "Univariate", time = os_months, status = os_deceased)
 uni.brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier", time = os_months, status = os_deceased)
 plot_brier(uni.brier_score)
 ```
@@ -65,7 +65,7 @@ tdROC::plot.tdROC(uni.roc)
 
 The forward step wise method can be fitted using the function stepAIC in the MASS package:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
-mod.fs = fun_fit(train, fit = "Stepwise")
+mod.fs = fun_train(train, fit = "Stepwise")
 fs.brier_score = pred_error(obj = mod.fs, fit = "Stepwise")
 plot_brier(fs.brier_score)
 ```
@@ -85,7 +85,7 @@ Another method is the dimension reduction obtained by using supervised principal
 ##Supervised Principal Components
 
 ```{r}
-mod.pcr = fun_fit(train, fit = "PCR")
+mod.pcr = fun_train(train, fit = "PCR")
 pcr.brier_score = pred_error(obj = mod.pcr, fit = "PCR")
 plot_brier(pcr.brier_score)
 ```
@@ -103,7 +103,7 @@ print(ibrier)
 ##Partial Least square
 
 ```{r}
-mod.pls = fun_fit(train, fit = "PLS")
+mod.pls = fun_train(train, fit = "PLS")
 ```
 
 
@@ -118,7 +118,7 @@ tdROC::plot.tdROC(pls.roc)
 Another method we have talked about is the penalised likelihood methods ridge regression and Lasso.
 
 ```{r}
-mod.Lasso = fun_fit(train, fit = "Lasso")
+mod.Lasso = fun_train(train, fit = "Lasso")
 plot(mod.Lasso)
 ```
 
@@ -144,7 +144,7 @@ tdROC::plot.tdROC(Lasso.roc)
 It is argued that survival trees might have better performance than other regression methods. We can fit a regression tree to our simulated data with:
 
 ```{r}
-stree = fun_fit(train, fit = "tree")
+stree = fun_train(train, fit = "tree")
 plot(stree)
 ```
 
@@ -153,7 +153,7 @@ Nevertheless, decision trees can create overcomplex trees that don't generalise 
 We have said that ensemble methods such as random forest may give better prediction:
 
 ```{r}
-bst = fun_fit(train, fit = "random forest")
+bst = fun_train(train, fit = "random forest")
 ```
 
 Let's calculate the Brier score:

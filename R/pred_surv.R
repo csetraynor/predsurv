@@ -1,13 +1,13 @@
-#' Fit Forward Selection
+#' Fit Model to Training data
 #'
-#' Fit the Forward Selection method
+#' Train data to specific feature selection method
 #'
 #' @param
 #' train : train data \cr
 #' time : time variable \cr
 #' status : status variable \cr
 #' method: forward, backward or both \cr
-#' fit : fit model: "Stepwise", "random forest"
+#' fit : fit model: "Stepwise", "Random forest"
 #' @return a coxph forward Stepwise fit object
 #' @export
 #' @importFrom magrittr %>%
@@ -18,10 +18,11 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_fit <- function(train, time = os_months, status = os_deceased, method = "forward", fit, penalty = "BIC" ){
+fun_train <- function(train, time = os_months, status = os_deceased, fit, penalty = "BIC" ){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
+  print(fit)
 
   # take only covariates for which beta is not zero
   trainX <- train %>% dplyr::select(-!!time, -!!status)
@@ -31,6 +32,11 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
   #create formula
    form <- as.formula(paste("Surv(time, status)", paste("~", paste(names(trainX), collapse = " + "), sep = " " )))
 
+   #create fold id for CV
+   set.seed(9)
+   foldid <-  caret::createFolds(train %>% select(!!status) %>% unlist,
+                                 k = 10, list = FALSE)
+   #Fit models
   if(fit == "Univariate"){
     reg <- function(indep_var,dep_var,data_source) {
       formula <- as.formula(paste(dep_var," ~ ", indep_var))
@@ -47,7 +53,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
   mod <- t(data.frame(coef = coefficients))
   names(mod) <- features
   }
-
   if(fit == "Stepwise"){
     # create coxph object
     fit1 <- suppressWarnings(survival::coxph(Surv(time, status)~1,
@@ -56,7 +61,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
                               status = !!status) ))
 
     testBeta <- as.formula(paste("~", paste(names(trainX), collapse = " + "), sep = " " ) )
-
     if(penalty == "AIC"){
       k = 2
     }else{
@@ -64,30 +68,39 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
         k = log(nrow(trainX))
       }
     }
-
     #forward Stepwise selection
     mod <- suppressWarnings(MASS::stepAIC(fit1,
             scope = list(upper = testBeta, lower = ~1) ,
             trace = FALSE,
-            direction = method,
+            direction = "forward",
             k = k,
             steps =  nrow(train)-1 ))
   }
-
-  if(fit == "Lasso"){
+  if(fit == "Lasso" | fit == "Adaptive Lasso"){
     x <- as.matrix(trainX)
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox")
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid)
   }
-   if(fit == "ridge"){
+   if(fit == "Ridge regression"){
      x <- as.matrix(trainX)
      y <- as.matrix(train %>%
                       dplyr::select(time = !!time, status = !!status), ncol = 2)
-     mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0) #alpha 0 ridge penalty
+     mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid) #alpha 0 ridge penalty
    }
-
-  if(fit == "tree"){
+   if(fit == "Elastic net" | fit == "Adapted Elastic Net"){
+     alphaList <-  (1:10) * 0.1
+     x <- as.matrix(trainX)
+     y <- as.matrix(train %>%
+                      dplyr::select(time = !!time, status = !!status), ncol = 2)
+     elasticnet <-  lapply(alphaList, function(a){
+       glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid)});
+     cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
+     a <- alphaList[match(min(cvm), cvm)];
+     mod <- elasticnet[[match(min(cvm), cvm)]]
+     attr(mod, "chosen.alpha") <- a
+   }
+  if(fit == "Tree"){
     ### with weight-dependent log-rank scores
     ### log-rank trafo for observations in this node only (= weights > 0)
     survtree_control <-
@@ -98,7 +111,7 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
                           time   = !!time, status = !!status),
                       control = survtree_control )
   }
-  if(fit == "random forest"){
+  if(fit == "Random forest"){
     train_tree <- as.data.frame(traincoxphdata %>%
                     dplyr::mutate(
                       time   = !!time,
@@ -109,7 +122,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
                            data = train_tree,
                           controls = forest_control)
   }
-
   if(fit == "PLS"){
     X_train <- apply((as.matrix(trainX)), FUN="as.numeric",MARGIN = 2)
     Y_train <- train %>% dplyr::select(time = !!time) %>% unlist %>% as.numeric
@@ -117,7 +129,6 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 
     mod <- plsRcox::plsRcoxmodel.default(X_train, time = Y_train,event = C_train, nt=5)
   }
-
    if(fit == "PCR"){
      X_train <- apply((as.matrix(trainX)),FUN="as.numeric",MARGIN=2)
      X_train <- t(X_train)
@@ -125,15 +136,14 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
      C_train <- train %>% dplyr::select(status = !!status) %>% unlist
      featurenames <- colnames(trainX)
      data<-list(x=X_train,y=Y_train, censoring.status=C_train, featurenames=featurenames)
-
      mod <- superpc::superpc.train(data, type="survival")
    }
-
+   attr(mod, 'fit.model') <- fit
   return(mod)
 }
-#' Cox Model Prediction
+#' Test model
 #'
-#' This function takes a survival fit and following the Cox model, estimates the hazard for individual from the model coefficient, while the baseline hazard is estimated with the Nelson-Aalen method.
+#' This function takes a survival fit and following the Cox model (or random forest), estimates the hazard for individual from the model coefficient, while the baseline hazard is estimated with the Nelson-Aalen method. Gives prediction error measures Brier, c index, loglik, auc
 #'
 #' @param
 #' obj : survival model object for example a glmnet fit. \cr
@@ -147,12 +157,16 @@ fun_fit <- function(train, time = os_months, status = os_deceased, method = "for
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-pred_error <- function(obj, train_data = train, test_data = test, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", fit = "Stepwise", adapted = "default"){
+fun_test <- function(obj, train_data = train, test_data = test, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
+  fit <- attr(obj, "fit.model")
+  print(fit)
+
+
   # create coxph object with pre-defined coefficients
-  if(fit == "Univariate" | fit == "Stepwise" | fit == "Lasso" | fit == "random forest" | fit == "PLS" | fit == "PCR"){
+  if(fit == "Univariate" | fit == "Stepwise" | fit == "Lasso"  | fit == "PLS" | fit == "PCR" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net"){
 
     if(fit == "Univariate"){
       selectedBeta <- obj
@@ -166,16 +180,13 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
       selectedBeta <- optimal.beta[nonzero.coef]
     }
 
-    if(fit == "Lasso"){
+    if(fit == "Lasso" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net" ){
       # find lambda for which dev.ratio is max
       optimal.coef <- as.matrix(coef(obj, s = "lambda.min") )
       selectedBeta <-  optimal.coef[optimal.coef != 0,]
     }
-    if(fit == "random forest" | fit == "PLS" | fit == "PCR"){
+    if(fit == "PLS" | fit == "PCR"){
       mod <- obj;
-      if(fit == "random forest"){
-        selectedBeta <- train %>% dplyr::select(-!!time, -!!status)
-      }
       if(fit == "PCR"){
         selectedBeta <- mod$feature.scores
       }
@@ -188,73 +199,101 @@ pred_error <- function(obj, train_data = train, test_data = test, time = os_mont
       selectedBeta <- 1;
       names(selectedBeta) <- "Null"
     }
-    # take only covariates for which beta is not zero
+    # Create train X take only covariates for which beta is not zero
     trainX <- train_data %>% dplyr::select(-!!time, -!!status)
     selectedTrainX   <- trainX[,colnames(trainX) %in% names(selectedBeta)]
-
     traincoxphdata <- cbind(train_data %>% dplyr::select(!!time, !!status), selectedTrainX)
-
-    #create formula
+    #Create Cox formula
     testBeta <- paste(names(selectedBeta), collapse = " + ")
     form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
-
-    if(fit == "Univariate" | fit == "Stepwise" | adapted == "adapted Lasso"){
+    #Create Cox Model
+    if(fit == "Univariate" | fit == "Stepwise" | fit == "Adaptive Lasso"){
       #Fit model
       mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
         status = !!status))
     }
-
-    if(fit == "Lasso" | fit == "PCR" | fit == "PLS"){
+    if(fit == "Lasso" | fit == "PCR" | fit == "PLS" | fit == "Ridge regression" | fit == "Elastic net"){
       #Fit model
       mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
         status = !!status), init = selectedBeta, iter = 0)
     }
-
-    # Create test vars
+    # Create Test vars
     testX <- test_data %>% dplyr::select(-!!time, -!!status)
     selectedTestX <- testX[,colnames(testX) %in% names(selectedBeta)]
     ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
 
-    #grid of equidistant time points
+    #Create grid of equidistant time points for testing
     timepoints <-  seq(0, max(train_data %>%
-                    dplyr::filter(!!status == event_type) %>%
-                    dplyr::select(!!time) %>% unlist), length.out = 100L)
-
-    if(pred == "Brier"){
+                                dplyr::filter(!!status == event_type) %>%
+                                dplyr::select(!!time) %>% unlist), length.out = 100L)
+    ####Prediction Error
+    if(pred == "Brier" | all){
       #Calculate probs
       probs <- pec::predictSurvProb(mod,
                       newdata = ndata, times = timepoints)
       #Calculate brier score
-      out <- pec::pec(probs, Surv(time, status) ~ 1,
+      brier <- pec::pec(probs, Surv(time, status) ~ 1,
             data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
             maxtime = max(timepoints),
             exact = F,
             exactness = 99L)
+      out <- brier
     }
-    if(pred == "ROC"){
+    if(pred == "ROC" | all ){
       probs <- predict(mod, newdata = testX, type = "lp")
 
-      out <- tdROC::tdROC(X = probs,
+      roc <- tdROC::tdROC(X = probs,
         Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
          delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
   tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87),
    nboot = 10, alpha = 0.05, n.grid = 1000,  type = "Epanechnikov"
       )
+      out <- roc
     }
-    if(pred == "c_index"){
+    if(pred  == "Deviance" | all  ){
+      logl <- -2*(mod$loglik)
+      out <- logl
+    }
+    if(pred == "c_index" | all ){
       ###Create your survival estimates
-      out <-  pec::cindex(mod, formula = Surv(time, status) ~ 1,
+      ci <-  pec::cindex(mod, formula = Surv(time, status) ~ 1,
                              data = ndata %>% dplyr::mutate(
                              time   = !!time, status = !!status))
+      out <- ci
     }
-    attr(out, 'predction.of.model') <- fit
-    attr(out, 'number.of.individuals.cohort') <- nrow(train_data) + nrow(test_data)
   }else{
-    print("Not allowed fit argument")
+    if(fit == "Random forest"){
+      # Create Test vars
+      testX <- test_data %>% dplyr::select(-!!time, -!!status)
+      ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), testX)
+      #Create grid of equidistant time points for testing
+      timepoints <-  seq(0, max(train_data %>%
+                                  dplyr::filter(!!status == event_type) %>%
+                                  dplyr::select(!!time) %>% unlist), length.out = 100L)
+      #Calculate probs
+      mod <- obj;
+      probs <- pec::predictSurvProb(mod,
+                                    newdata = ndata, times = timepoints)
+      #Calculate brier score
+      out <- pec::pec(probs, Surv(time, status) ~ 1,
+                        data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
+                        maxtime = max(timepoints),
+                        exact = F,
+                        exactness = 99L)
+    }else{
+      print("Not allowed fit argument")
+    }
   }
-
+  if(all & fit != "Random forest"){
+    attr(out, 'brier_pred') <- brier
+    attr(out, 'ci_pred') <- ci
+    attr(out, 'roc_pred') <- roc
+    attr(out, 'dev_pred') <- logl
+  }
+  attr(out, 'number.of.individuals.cohort') <- nrow(train_data) + nrow(test_data)
+  attr(mod, 'predction.of.model') <- fit
   return(out)
 }
 

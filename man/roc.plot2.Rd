@@ -4,8 +4,8 @@
 \alias{roc.plot2}
 \title{Plot ROC Curves}
 \usage{
-roc.plot2(..., x.var = "fpr", y.var = "tpr", x.lab = x.var,
-  y.lab = y.var, ident = TRUE)
+roc.plot2(..., x.var = "false positive rate", y.var = "true positive rate",
+  x.lab = x.var, y.lab = y.var, ident = TRUE)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

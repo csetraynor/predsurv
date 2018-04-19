@@ -32,7 +32,7 @@ plot_brier <- function(brier_score){
 #' @import prodlim
 #' @author Tarj
 
-roc.plot2 <- function(...,x.var="fpr",y.var="tpr",x.lab=x.var,y.lab=y.var,ident=TRUE){
+roc.plot2 <- function(...,x.var="false positive rate",y.var="true positive rate",x.lab=x.var,y.lab=y.var,ident=TRUE){
   fitList <- list(...)
 
   roc.data <- plyr::ldply(seq_along(fitList),function(i){
@@ -48,7 +48,8 @@ roc.plot2 <- function(...,x.var="fpr",y.var="tpr",x.lab=x.var,y.lab=y.var,ident=
 
   p <- ggplot(roc.data, aes(x, y)) + theme_bw() +
     geom_line(aes(colour=model)) +
-    guides(col = guide_legend(ncol = 1,title=NULL)) + theme(legend.position="bottom")
+    guides(col = guide_legend(ncol = 1,title=NULL)) + theme(legend.position="bottom") +
+    labs(title = "time dependent ROC")
   if(ident) p <- p + geom_abline(slope=1,alpha=0.2)
   p <- p + scale_x_continuous(x.lab)
   p <- p + scale_y_continuous(y.lab)
