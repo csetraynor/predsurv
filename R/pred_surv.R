@@ -44,7 +44,7 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
   mod1 <- lapply(colnames(trainX), FUN = reg, dep_var = "Surv(time, status)", data_source = traincoxphdata %>% dplyr::mutate(
     time   = !!time,
     status = !!status) )
-  mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.01]$coefficients)
+  mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.001]$coefficients)
   mod2[sapply(mod2, is.null)] <- NULL
   features <- sapply(mod2, function(p) rownames(p))
   coefficients <- sapply(mod2, function(p) p[,1])
@@ -90,14 +90,18 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
      mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid) #alpha 0 ridge penalty
    }
    if(fit == "Elastic net" | fit == "Adapted Elastic Net"){
-     alphaList <-  (1:10) * 0.1
-     x <- as.matrix(trainX %>% select(names(mod)))
-
+     alphaList <-  (1:19) * 0.05
+     if(iterative){
+       x <- as.matrix(trainX %>% select(names(mod)))
+     }else{
+       x <- as.matrix(trainX)
+     }
      y <- as.matrix(train %>%
                       dplyr::select(time = !!time, status = !!status), ncol = 2)
      elasticnet <-  lapply(alphaList, function(a){
        glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid)});
      cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
+     print(match(min(cvm), cvm))
      a <- alphaList[match(min(cvm), cvm)];
      mod <- elasticnet[[match(min(cvm), cvm)]]
      attr(mod, "chosen.alpha") <- a
@@ -215,11 +219,12 @@ fun_test <- function(obj, train_data = train, test_data = test, time = os_months
         time = !!time,
         status = !!status))
     }
-    if(fit == "Lasso" | fit == "PCR" | fit == "PLS" | fit == "Ridge regression" | fit == "Elastic net"){
+    if(fit == "Lasso" | fit == "PCR" | fit == "PLS"  | fit == "Elastic net" | fit == "Ridge regression"){
       #Fit model
       mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
         time = !!time,
-        status = !!status), init = selectedBeta, iter = 0)
+        status = !!status), init = selectedBeta, iter = 0,
+        control = coxph.control(iter.max = 0))
     }
     # Create Test vars
     testX <- test_data %>% dplyr::select(-!!time, -!!status)
@@ -227,9 +232,13 @@ fun_test <- function(obj, train_data = train, test_data = test, time = os_months
     ndata <- cbind(test_data %>% dplyr::select(!!time, !!status), selectedTestX)
 
     #Create grid of equidistant time points for testing
-    timepoints <-  seq(0, max(train_data %>%
+    timepoints <-  seq(0, max(c(train_data %>%
                                 dplyr::filter(!!status == event_type) %>%
-                                dplyr::select(!!time) %>% unlist), length.out = 100L)
+                                dplyr::select(!!time) %>% unlist ,
+                                test_data %>%
+                                  dplyr::filter(!!status == event_type) %>%
+                                  dplyr::select(!!time) %>% unlist
+                              ) ), length.out = 100L)
     ####Prediction Error
     if(pred == "Brier" | all){
       #Calculate probs
@@ -249,7 +258,7 @@ fun_test <- function(obj, train_data = train, test_data = test, time = os_months
       roc <- tdROC::tdROC(X = probs,
         Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
          delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87, na.rm = TRUE),
+  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .73),
    nboot = 0, alpha = 0.05, n.grid = 1000,  type = "uniform"
       )
       out <- roc

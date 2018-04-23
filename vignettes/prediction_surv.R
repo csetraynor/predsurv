@@ -73,6 +73,7 @@ dev.off()
 data("lungdata")
 tte <- plot_tte_dist(lungdata, time = os_months, status = os_deceased)
 km <- plot_km(lungdata, time = os_months, status = os_deceased)
+lungdata <- tibble::rownames_to_column(lungdata, var = "subject")
 
 pairs(survdata[,3:10])
 
@@ -91,16 +92,17 @@ train = fold[["train"]]
 test = fold[["test"]]
 head(train[,1:6]); rm(fold)
 ##Train Models##
-my_model_list <- list("Univariate", "Elastic net", "Random forest")
+my_model_list <- list("Univariate", "Lasso", "Ridge regression", "Elastic net", "Random forest")
 
 my_trained_models <- lapply(my_model_list, function(m) fun_train(train = train, fit = m))
-
 #Iterative Method
 my_trained_models[[6]] <- fun_train(train = train, fit = "Univariate", iterative = TRUE)
-plot(my_trained_models[[6]])
+
+plot(my_trained_models[[4]])
 
 ##Test Models
-my_tested_models <- lapply(my_trained_models[c(1,4,5,6)], function(m) fun_test(test_data = test,obj = m, all = TRUE))
+my_tested_models <- lapply(my_trained_models[c(1,2,4,5,6)], function(m) fun_test(test_data = test,obj = m, all = TRUE, train_data = train))
+
 
 pdf('lung_corr.pdf')
 par(mfrow = c(2, 2))
@@ -115,24 +117,28 @@ dev.off()
 
 
 uni.roc <- attr(my_tested_models[[1]], 'roc_pred')
-enet.roc <- attr(my_tested_models[[2]], 'roc_pred')
-iter.roc <- attr(my_tested_models[[4]], 'roc_pred')
-attr(uni.roc, 'prediction.of.model') <- "Univariate"
-attr(enet.roc, 'prediction.of.model') <- "Elastic net"
-attr(iter.roc, 'prediction.of.model') <- "Iterative elastic net"
+lasso.roc <- attr(my_tested_models[[2]], 'roc_pred')
+enet.roc <- attr(my_tested_models[[3]], 'roc_pred')
+iter.roc <- attr(my_tested_models[[5]], 'roc_pred')
+attr(uni.roc, 'prediction.of.model') <- "Uni"
+attr(lasso.roc, 'prediction.of.model') <- "Lasso"
+attr(enet.roc, 'prediction.of.model') <- paste0("ENet (α = ", attr(my_trained_models[[4]], 'chosen.alpha'), ")")
+attr(iter.roc, 'prediction.of.model') <- paste0("Iter-ENet (α = ", attr(my_trained_models[[6]], 'chosen.alpha'), ")")
 
-rocplot <- roc.plot2(uni.roc, enet.roc, iter.roc) +
-  labs(subtitle = paste0("Time = ", round(quantile(test$os_months, .87),0 ) , " months"))
+rocplot <- roc.plot2(uni.roc, lasso.roc, enet.roc, iter.roc) +
+  labs(subtitle = paste0("Time = ", round(quantile(test$os_months, .67),0 ) , " months")) + guides(fill = guide_legend(title = "Models", title.position = "top", keywidth = 10, keyheight = 1, col = guide_legend(ncol = 2)))
 
 uni.brier <- attr(my_tested_models[[1]], 'brier_pred')
-enet.brier <- attr(my_tested_models[[2]], 'brier_pred')
-bs.brier <- my_tested_models[[3]]
-iter.brier <- attr(my_tested_models[[4]], 'brier_pred')
-attr(uni.brier, 'prediction.of.model') <- "Univariate"
-attr(enet.brier, 'prediction.of.model') <- "Elastic net"
-attr(iter.brier, 'prediction.of.model') <- "Iterative elastic net"
-attr(bs.brier, 'prediction.of.model') <- "Random forest"
-brierplot <- plot_brier2(uni.brier, enet.brier, bs.brier, iter.brier)
+lasso.brier <- attr(my_tested_models[[2]], 'brier_pred')
+enet.brier <- attr(my_tested_models[[3]], 'brier_pred')
+bs.brier <- my_tested_models[[4]]
+iter.brier <- attr(my_tested_models[[5]], 'brier_pred')
+attr(uni.brier, 'prediction.of.model') <- "Uni"
+attr(lasso.brier, 'prediction.of.model') <- "Lasso"
+attr(enet.brier, 'prediction.of.model') <- paste0("Enet (α=", attr(my_trained_models[[4]], 'chosen.alpha'), ")")
+attr(iter.brier, 'prediction.of.model') <- paste0("Iter-Enet (α=", attr(my_trained_models[[6]], 'chosen.alpha'), ")")
+attr(bs.brier, 'prediction.of.model') <- "Random Forest"
+brierplot <- plot_brier2(uni.brier, lasso.brier, enet.brier, bs.brier, iter.brier)+  guides(fill = guide_legend(title = "Models", title.position = "top", keywidth = 10, keyheight = 1, col = guide_legend(ncol = 2)))
 
 plot(my_trained_models[[3]])
 
@@ -143,6 +149,8 @@ ggpubr::ggarrange(tte, km , brierplot, rocplot,
 dev.off()
 
 ##Cross validation
-lungdata <- tibble::rownames_to_column(lungdata, var = "subject")
-cv.uni <- fun_cv(data = lungdata, "Univariate")
+
+cv.uni <- fun_cv(data = lungdata, "Univariate", K = 10)
+
+attr(cv.uni[[1]], 'brier_pred')
 

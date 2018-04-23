@@ -4,7 +4,8 @@
 \alias{create_training_test_set}
 \title{Create training test split}
 \usage{
-create_training_test_set(d, status = status, seed = 111, percent = 0.8)
+create_training_test_set(d, status = os_deceased, seed = 111,
+  percent = 0.8)
 }
 \arguments{
 \item{d}{a dataset \cr

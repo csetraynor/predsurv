@@ -39,9 +39,9 @@ roc.plot2 <- function(...,x.var="false positive rate",y.var="true positive rate"
     roc.data <- data.frame(
       x = 1 -unlist(fitList[[i]]$ROC["spec"]),
       y = unlist(fitList[[i]]$ROC["sens"]),
-      model=paste0(paste(deparse(attr(fitList[[i]], "prediction.of.model") ),collapse = "\n"), " (AUC = ", round(fitList[[i]]$AUC[1], 2),
-              ", lower = ",round(fitList[[i]]$AUC[3], 2),
-              ", upper = ", round(fitList[[i]]$AUC[4], 2), ")" ) )
+      model=paste0(paste(deparse(attr(fitList[[i]], "prediction.of.model") ),collapse = " ") ," ", round(fitList[[i]]$AUC[1], 2),
+              " (",round(fitList[[i]]$AUC[3], 2),
+              " - ", round(fitList[[i]]$AUC[4], 2), " )" ) )
 
     arrange(roc.data,y)
   })
@@ -77,7 +77,7 @@ plot_brier2 <- function(...,x.var="Time",y.var="Brier Score",x.lab=x.var,y.lab=y
     roc.data <- data.frame(
       x = unlist(brierList[[i]]$time) ,
       y = unlist(brierList[[i]]$AppErr[[2]]),
-      model=paste0(paste(deparse(attr(brierList[[i]], "prediction.of.model") ),collapse = "\n"), " (integrated Brier Score = ", round(ibrier[[i]][1], 2) ,")" ) )
+      model=paste0(paste(deparse(attr(brierList[[i]], "prediction.of.model") ),collapse = "\n"), " (iBrier = ", round(ibrier[[i]][1], 2) ,")" ) )
 
   })
 

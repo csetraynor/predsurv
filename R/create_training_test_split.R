@@ -10,15 +10,19 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
-create_training_test_set <- function(d, status = status,  seed = 111, percent = 0.8){
+create_training_test_set <- function(d, status = os_deceased,  seed = 111, percent = 0.8){
   set.seed(seed)
 
-  y <- dplyr::enquo(status)
+  status <- dplyr::enquo(status)
 
-  tmp <- caret::createDataPartition(y = d %>% dplyr::select(!!y) %>% unlist,
-                                    p = percent, list =  FALSE)
-  train <-  d[tmp,]
-  test <- d[-tmp,]
+  tmp <- rsample::mc_cv(d, strata = d %>% dplyr::select(!!status)%>%colnames , times = 1, prop = 3/4)
+  train_data <- purrr::map(tmp$splits,
+                        function(x) {
+                        as.data.frame(x)})
+  train <- train_data[[1]];
+  test <-  d[!(d$subject %in% train$subject ),];
+  train$subject <- NULL
+  test$subject <- NULL
 
   # train <- train %>% dplyr::select(- !!y)
   # test <- test %>% dplyr::select(- !!y)
