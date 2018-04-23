@@ -4,8 +4,8 @@
 \alias{fun_cv}
 \title{Compute C-V iBrier}
 \usage{
-fun_cv(data, model_selection = "stepwise", time = os_months,
-  status = os_deceased, K = 10)
+fun_cv(..., data, iter = FALSE, time = os_months, status = os_deceased,
+  KMC = 20)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

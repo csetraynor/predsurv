@@ -1,15 +1,14 @@
 library(predsurv)
 theme_set(theme_bw())
 
-# data("survdata")
-# survdata <- surv_sim_data(N = 500, features = 500, CenRate = 0.25)
-
-data("survdata")
-library(dplyr)
+survdata <- surv_sim_data(N = 500, features = 500, CenRate = 0.25)
 
 #Exploratory Analysis
-plot_tte_dist(survdata, time = os_months, status = os_deceased)
-plot_km(survdata, time = os_months, status = os_deceased)
+tte <- plot_tte_dist(survdata, time = os_months, status = os_deceased)
+km <- plot_km(survdata, time = os_months, status = os_deceased)
+ggpubr::ggarrange(tte, km,
+          labels = c("A", "B"),
+          ncol = 2)
 
 ##Create train-test split
 fold = create_training_test_set(survdata, p = 0.8, status = os_deceased)
@@ -21,39 +20,129 @@ head(train[,1:6]); rm(fold)
 my_model_list <- list("Univariate", "Ridge regression", "Lasso", "Elastic net", "Random forest", "PCR")
 my_trained_models <- lapply(my_model_list, function(m) fun_train(train = train, fit = m))
 
-my_trained_models[c(4)]
+plot(my_trained_models[[3]])
 
 
 ##Test Models
-my_tested_models <- lapply(my_trained_models[c(1,4,5)], function(m) fun_test(test_data = test,obj = m, all = TRUE))
+my_tested_models <- lapply(my_trained_models[c(1,2,3,4,5)], function(m) fun_test(test_data = test,obj = m, all = TRUE))
 
 uni.roc <- attr(my_tested_models[[1]], 'roc_pred')
-enet.roc <- attr(my_tested_models[[2]], 'roc_pred')
-attr(uni.roc, 'predction.of.model') <- "Univariate"
-attr(enet.roc, 'predction.of.model') <- "Elastic net"
+ridge.roc <- attr(my_tested_models[[2]], 'roc_pred')
+lasso.roc <- attr(my_tested_models[[3]], 'roc_pred')
+enet.roc <- attr(my_tested_models[[4]], 'roc_pred')
+attr(uni.roc, 'prediction.of.model') <- "Univariate"
+attr(ridge.roc, 'prediction.of.model') <- "Ridge regression"
+attr(lasso.roc, 'prediction.of.model') <- "Lasso"
+attr(enet.roc, 'prediction.of.model') <- "Elastic net"
 
 # stree = fun_train(train, fit = "tree")
 # plot(stree)
 #Random Forest
 
 #var_imp(bst)
-roc.plot2(uni.roc, enet.roc)
+rocplot <- roc.plot2(uni.roc, ridge.roc, lasso.roc, enet.roc)
 
 
 uni.brier <- attr(my_tested_models[[1]], 'brier_pred')
+ridge.brier <- attr(my_tested_models[[2]], 'brier_pred')
+lasso.brier <- attr(my_tested_models[[3]], 'brier_pred')
+enet.brier <- attr(my_tested_models[[4]], 'brier_pred')
+bs.brier <- my_tested_models[[5]]
+attr(uni.brier, 'prediction.of.model') <- "Univariate"
+attr(ridge.brier, 'prediction.of.model') <- "Ridge regression"
+attr(lasso.brier, 'prediction.of.model') <- "Lasso"
+attr(enet.brier, 'prediction.of.model') <- "Elastic net"
+attr(bs.brier, 'prediction.of.model') <- "Random forest"
+brierplot <- plot_brier2(uni.brier, ridge.brier, lasso.brier, enet.brier, bs.brier)
+pdf('sim_results.pdf')
+ggpubr::ggarrange(tte, km , brierplot, rocplot,
+                  labels = c("A", "B", "C", "D"),
+                  ncol = 2, nrow = 2)
+dev.off()
+
+
+# ##PCR
+# mod.pcr = fun_train(train, fit = "PCR")
+# pcr.brier_score = pred_error(obj = mod.pcr, fit = "PCR")
+# plot_brier(pcr.brier_score)
+#
+# pcr.roc = pred_error(obj = mod.pcr, fit = "PCR", pred = "ROC")
+# tdROC::plot.tdROC(pcr.roc)
+
+##Real Data study
+data("lungdata")
+tte <- plot_tte_dist(lungdata, time = os_months, status = os_deceased)
+km <- plot_km(lungdata, time = os_months, status = os_deceased)
+
+pairs(survdata[,3:10])
+
+correlations <- cor(na.omit(lungdata[,3:23]))
+# correlations
+row_indic <- apply(correlations, 1, function(x) sum(x > 0.3 | x < -0.3) > 1)
+correlations<- correlations[row_indic ,row_indic ]
+pdf('corrplot.pdf')
+corrplot::corrplot(correlations, method="square")
+dev.off()
+
+
+##Create train-test split
+fold = create_training_test_set(lungdata, p = 0.8, status = os_deceased)
+train = fold[["train"]]
+test = fold[["test"]]
+head(train[,1:6]); rm(fold)
+##Train Models##
+my_model_list <- list("Univariate", "Elastic net", "Random forest")
+
+my_trained_models <- lapply(my_model_list, function(m) fun_train(train = train, fit = m))
+
+#Iterative Method
+my_trained_models[[6]] <- fun_train(train = train, fit = "Univariate", iterative = TRUE)
+plot(my_trained_models[[6]])
+
+##Test Models
+my_tested_models <- lapply(my_trained_models[c(1,4,5,6)], function(m) fun_test(test_data = test,obj = m, all = TRUE))
+
+pdf('lung_corr.pdf')
+par(mfrow = c(2, 2))
+plot(my_trained_models[[3]])
+title("Lasso",line=2.5)
+plot(my_trained_models[[4]])
+title("Elastic net",line=2.5)
+plot(my_trained_models[[6]])
+title("Iterative elastic net",line=2.5)
+corrplot::corrplot(correlations, method="square")
+dev.off()
+
+
+uni.roc <- attr(my_tested_models[[1]], 'roc_pred')
+enet.roc <- attr(my_tested_models[[2]], 'roc_pred')
+iter.roc <- attr(my_tested_models[[4]], 'roc_pred')
+attr(uni.roc, 'prediction.of.model') <- "Univariate"
+attr(enet.roc, 'prediction.of.model') <- "Elastic net"
+attr(iter.roc, 'prediction.of.model') <- "Iterative elastic net"
+
+rocplot <- roc.plot2(uni.roc, enet.roc, iter.roc) +
+  labs(subtitle = paste0("Time = ", round(quantile(test$os_months, .87),0 ) , " months"))
+
+uni.brier <- attr(my_tested_models[[1]], 'brier_pred')
 enet.brier <- attr(my_tested_models[[2]], 'brier_pred')
-bst.brier <- my_tested_models[[3]]
-attr(uni.brier, 'predction.of.model') <- "Univariate"
-attr(enet.brier, 'predction.of.model') <- "Elastic net"
-attr(bst.brier, 'predction.of.model') <- "Random forest"
-plot_brier2(uni.brier, enet.brier, bst.brier)
+bs.brier <- my_tested_models[[3]]
+iter.brier <- attr(my_tested_models[[4]], 'brier_pred')
+attr(uni.brier, 'prediction.of.model') <- "Univariate"
+attr(enet.brier, 'prediction.of.model') <- "Elastic net"
+attr(iter.brier, 'prediction.of.model') <- "Iterative elastic net"
+attr(bs.brier, 'prediction.of.model') <- "Random forest"
+brierplot <- plot_brier2(uni.brier, enet.brier, bs.brier, iter.brier)
 
+plot(my_trained_models[[3]])
 
-##PCR
-mod.pcr = fun_train(train, fit = "PCR")
-pcr.brier_score = pred_error(obj = mod.pcr, fit = "PCR")
-plot_brier(pcr.brier_score)
+pdf('lung_results.pdf')
+ggpubr::ggarrange(tte, km , brierplot, rocplot,
+                  labels = c("A", "B", "C", "D"),
+                  ncol = 2, nrow = 2)
+dev.off()
 
-pcr.roc = pred_error(obj = mod.pcr, fit = "PCR", pred = "ROC")
-tdROC::plot.tdROC(pcr.roc)
+##Cross validation
+lungdata <- tibble::rownames_to_column(lungdata, var = "subject")
+cv.uni <- fun_cv(data = lungdata, "Univariate")
 

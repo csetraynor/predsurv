@@ -31,12 +31,12 @@ Because this is a  simulated dataset we can skip various steps of data manipulat
 
 ```{r}
 # data("survdata")
-survdata <- surv_sim_data(N = 400, features = 200, CenRate = 1/10)
+survdata <- surv_sim_data(N = 1000, features = 100, CenRate = 1/10)
 plot_km(survdata, time = os_months, status = os_deceased)
 ```
 
 ```{r}
-fold = create_training_test_set(survdata, p = 0.8, status = os_deceased)
+fold = create_training_test_set(survdata, p = 0.5, status = os_deceased)
 train = fold[["train"]]
 test = fold[["test"]]
 head(train[,1:6]); rm(fold)
@@ -48,18 +48,18 @@ head(train[,1:6]); rm(fold)
 We will first fit a subset selection method, for example Univariate:
 ```{r, results="hide", eval = FALSE, error = FALSE, warning=FALSE}
 mod.uni = fun_train(train, fit = "Univariate", time = os_months, status = os_deceased)
-uni.brier_score = pred_error(obj = mod.uni, fit = "Univariate", pred = "Brier", time = os_months, status = os_deceased)
+uni.brier_score = fun_test(obj = mod.uni,  pred = "Brier", time = os_months, status = os_deceased)
 plot_brier(uni.brier_score)
 ```
 
 Calculate the c-index:
 ```{R}
-uni.c_index = pred_error(obj = mod.uni, fit = "Univariate", pred = "c_index", status = os_deceased, time = os_months)
+uni.c_index = fun_test(obj = mod.uni,  pred = "c_index", status = os_deceased, time = os_months)
 print(uni.c_index)
 ```
 
 ```{r}
-uni.roc = pred_error(obj = mod.uni, fit = "Univariate", pred = "ROC",  status = os_deceased, time = os_months)
+uni.roc = fun_test(obj = mod.uni, pred = "ROC",  status = os_deceased, time = os_months)
 tdROC::plot.tdROC(uni.roc)
 ```
 

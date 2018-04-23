@@ -5,7 +5,7 @@
 \title{Fit Model to Training data}
 \usage{
 fun_train(train, time = os_months, status = os_deceased, fit,
-  penalty = "BIC")
+  penalty = "BIC", iterative = FALSE)
 }
 \arguments{
 \item{train}{: train data \cr

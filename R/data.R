@@ -22,4 +22,20 @@
 #'   \item{featurenames}{feature names in the gene expression matrix}
 #'   ...
 #' }
-"survdata"
+"lungdata"
+
+#' GBM data
+#'
+#'This is a subset of the glioblastoma dataset from the cancer genome atlas (TCGA) GBM study (2009) used in Shen et al. (2012).
+#'
+#' @format A list object containing three data matrices: copy number, methylation and mRNA expression in 55 samples.
+#' \describe{
+#'   \item{time}{Actual survival months observed}
+#'   \item{cens}{censoring indicator 1 observed, 0 censored}
+#'   \item{featurenames}{feature names in the gene expression matrix}
+#'   ...
+#' }
+#' @references Ronglai Shen, Qianxing Mo, Nikolaus Schultz, Venkatraman E. Seshan, Adam B. Olshen, Jason Huse, Marc Ladanyi, Chris Sander. (2012). Integrative Subtype Discovery in Glioblastoma Using iCluster. PLoS ONE 7, e35236
+"gbm"
+
+

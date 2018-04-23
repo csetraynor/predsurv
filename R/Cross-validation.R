@@ -11,55 +11,30 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_cv <- function(data, model_selection = "stepwise", time = os_months, status = os_deceased, K = 10){
+fun_cv <- function(..., data, iter = FALSE, time = os_months, status = os_deceased, KMC = 20){
+  M <- list(...)
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
-  #Create Folds
-  folds <- caret::createFolds(y = data %>% dplyr::select(!!status) %>% unlist , k = K)
-
-  #Initiate ibrier vector
-  ibrier <- rep(NA, K)
+  #Create folds
+  set.seed(9)
+  mc_samp <- rsample::mc_cv(data, strata = "os_deceased", times = KMC)
+  train_cv <- purrr::map(mc_samp$splits,
+             function(x) {
+               as.data.frame(x)})
 
   #start cross-validation
-  for(k in 1:K){
-
+  out <- rep(NA,length(M))
+  out <- for(m in seq_along(M)){ lapply(seq_along(train_cv), function(k){
+    print(k)
     #create train and test fold
-    train <-  data[-folds[[k]] ,]
-    test <-  data[folds[[k]] ,]
+    train <- train_cv[[k]];
 
-    #apply method
-    if(model_selection == "stepwise"){
-      mod.fs.coxph <-  predsurv::fun_fit(train, fit = "stepwise")
-    }
+    test <-  data[setdiff(data$subject, train$subject ),];
 
-
-    #make prediction
-    if(model_selection == "stepwise"){
-      pred.fs.coxph <- predsurv::mod_pred(obj = mod.fs.coxph, beta = coef, test_data = test, train_data = train)
-    }
-
-    #calculate Brier score
-    if(model_selection == "stepwise"){
-      brier_score <-  predsurv::fun_brier_score(obj = mod.fs.coxph,pred=pred.fs.coxph, test_data = test , beta = coef)
-    }
-
-    #save ibrier
-    ibrier[k] <-  predsurv::fun_ibrier_score(brier_score)
-
-    if(is.na(ibrier[k][1])){
-      print(pred.fs.coxph);
-      print(mod.fs.coxph);
-      print(head(test[1:6,1:6]));
-      print(head(train[1:6,1:6]));
-      print(brier_score);
-    }
-
-    print(ibrier)
-
-  } #end for loop end cross validation
-  ibrier <- do.call(rbind, ibrier)
-
-  return(ibrier)
+    trained_model <- predsurv::fun_train(train = train, fit = M[[m]], iterative = iter)
+    test_model <- predsurv::fun_test(test_data = test, train_data = train, obj = trained_model, all = TRUE)
+  })}
+  return(out)
 }

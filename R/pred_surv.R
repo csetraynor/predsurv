@@ -18,11 +18,9 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_train <- function(train, time = os_months, status = os_deceased, fit, penalty = "BIC" ){
+fun_train <- function(train, time = os_months, status = os_deceased, fit, penalty = "BIC" , iterative = FALSE){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
-
-  print(fit)
 
   # take only covariates for which beta is not zero
   trainX <- train %>% dplyr::select(-!!time, -!!status)
@@ -52,6 +50,9 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
   coefficients <- sapply(mod2, function(p) p[,1])
   mod <- t(data.frame(coef = coefficients))
   names(mod) <- features
+  if(iterative){
+    fit <-  "Elastic net"
+  }
   }
   if(fit == "Stepwise"){
     # create coxph object
@@ -90,7 +91,8 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
    }
    if(fit == "Elastic net" | fit == "Adapted Elastic Net"){
      alphaList <-  (1:10) * 0.1
-     x <- as.matrix(trainX)
+     x <- as.matrix(trainX %>% select(names(mod)))
+
      y <- as.matrix(train %>%
                       dplyr::select(time = !!time, status = !!status), ncol = 2)
      elasticnet <-  lapply(alphaList, function(a){
@@ -247,8 +249,8 @@ fun_test <- function(obj, train_data = train, test_data = test, time = os_months
       roc <- tdROC::tdROC(X = probs,
         Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
          delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87),
-   nboot = 10, alpha = 0.05, n.grid = 1000,  type = "Epanechnikov"
+  tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .87, na.rm = TRUE),
+   nboot = 0, alpha = 0.05, n.grid = 1000,  type = "uniform"
       )
       out <- roc
     }
