@@ -74,7 +74,7 @@ plot_brier2 <- function(...,x.var="Time",y.var="Brier Score",x.lab=x.var,y.lab=y
   ibrier <- lapply(brierList, function(i) pec::crps(i, models = "matrix"))
 
   brier.data <- plyr::ldply(seq_along(brierList),function(i){
-    roc.data <- data.frame(
+    brier.data <- data.frame(
       x = unlist(brierList[[i]]$time) ,
       y = unlist(brierList[[i]]$AppErr[[2]]),
       model=paste0(paste(deparse(attr(brierList[[i]], "prediction.of.model") ),collapse = "\n"), " (iBrier = ", round(ibrier[[i]][1], 2) ,")" ) )

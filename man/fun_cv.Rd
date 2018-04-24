@@ -4,7 +4,7 @@
 \alias{fun_cv}
 \title{Compute C-V iBrier}
 \usage{
-fun_cv(..., data, iter = FALSE, time = os_months, status = os_deceased,
+fun_cv(fit, data, iter = FALSE, time = os_months, status = os_deceased,
   KMC = 20)
 }
 \arguments{

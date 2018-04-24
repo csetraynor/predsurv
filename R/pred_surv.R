@@ -202,8 +202,8 @@ fun_test <- function(obj, train_data = train, test_data = test, time = os_months
       }
     }
     if(length(selectedBeta) == 0){
-      selectedBeta <- 1;
-      names(selectedBeta) <- "Null"
+      selectedBeta <- NA;
+      names(selectedBeta) <- "1"
     }
     # Create train X take only covariates for which beta is not zero
     trainX <- train_data %>% dplyr::select(-!!time, -!!status)

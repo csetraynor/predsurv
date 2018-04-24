@@ -11,8 +11,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_cv <- function(..., data, iter = FALSE, time = os_months, status = os_deceased, KMC = 20){
-  M <- list(...)
+fun_cv <- function(fit, data, iter = FALSE, time = os_months, status = os_deceased, KMC = 20){
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
@@ -25,9 +24,7 @@ fun_cv <- function(..., data, iter = FALSE, time = os_months, status = os_deceas
                as.data.frame(x)})
 
   #start cross-validation
-  out <- rep(NA,length(M))
-  for(m in seq_along(M)){
-    out[m] <- lapply(seq_along(train_cv), function(k){
+  out <- lapply(seq_along(train_cv), function(k){
     print(k)
     #create train and test fold
     train <- train_cv[[k]];
@@ -36,8 +33,8 @@ fun_cv <- function(..., data, iter = FALSE, time = os_months, status = os_deceas
     train$subject <- NULL
     test$subject <- NULL
 
-    trained_model <- predsurv::fun_train(train = train, fit = M[[m]], iterative = iter)
+    trained_model <- predsurv::fun_train(train = train, fit = fit, iterative = iter)
     test_model <- predsurv::fun_test(test_data = test, train_data = train, obj = trained_model, all = TRUE)
-  })}
+  })
   return(out)
 }

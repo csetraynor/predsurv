@@ -92,7 +92,7 @@ train = fold[["train"]]
 test = fold[["test"]]
 head(train[,1:6]); rm(fold)
 ##Train Models##
-my_model_list <- list("Univariate", "Lasso", "Ridge regression", "Elastic net", "Random forest")
+my_model_list <- list("Univariate",  "Ridge regression", "Lasso", "Elastic net", "Random forest")
 
 my_trained_models <- lapply(my_model_list, function(m) fun_train(train = train, fit = m))
 #Iterative Method
@@ -149,8 +149,23 @@ ggpubr::ggarrange(tte, km , brierplot, rocplot,
 dev.off()
 
 ##Cross validation
+data("lungdata")
+cv.uni <- fun_cv(data = lungdata, fit = "Univariate", KMC = 10)
+cv.enet <- fun_cv(data = lungdata, fit = "Elastic net", KMC = 10)
+cv.iter <- fun_cv(data = lungdata, iter= TRUE, fit = "Elastic net", KMC = 10)
+cv.bst <- fun_cv(data = lungdata, fit = "Random forest", KMC = 10)
 
-cv.uni <- fun_cv(data = lungdata, "Univariate", K = 10)
+brier_est <- rbind(extract_pars_cv(cv.uni, 'brier_pred', "Univariate"),
+               extract_pars_cv(cv.enet, 'brier_pred', "Elastic net"))
 
-attr(cv.uni[[1]], 'brier_pred')
+extract_pars_cv(cv.uni, 'roc_pred', "Univariate")
+extract_pars_cv(cv.uni, 'ci_pred', "Univariate")
+extract_pars_cv(cv.uni, 'dev_pred', "Univariate")
 
+pdf('brier_cv.pdf')
+brier_est %>%
+  ggplot(aes(x = ibrier, col = model)) +
+  geom_line(stat = "density") +
+  theme_bw() +
+  theme(legend.position = "top")
+dev.off()
