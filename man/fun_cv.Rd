@@ -5,7 +5,7 @@
 \title{Compute C-V iBrier}
 \usage{
 fun_cv(fit, data, iter = FALSE, time = os_months, status = os_deceased,
-  KMC = 20)
+  KMC = 100)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

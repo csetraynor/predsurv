@@ -11,15 +11,13 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_cv <- function(fit, data, iter = FALSE, time = os_months, status = os_deceased, KMC = 20){
+fun_cv <- function(fit, data, iter = FALSE, time = os_months, status = os_deceased, KMC = 100){
 
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
 
-  #Create folds
-  set.seed(9)
-  mc_samp <- rsample::mc_cv(data, strata = "os_deceased", times = KMC, prop = 3/4)
-  train_cv <- purrr::map(mc_samp$splits,
+
+  train_cv <- purrr::map(folds_l$splits,
              function(x) {
                as.data.frame(x)})
 

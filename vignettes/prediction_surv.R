@@ -150,22 +150,67 @@ dev.off()
 
 ##Cross validation
 data("lungdata")
-cv.uni <- fun_cv(data = lungdata, fit = "Univariate", KMC = 10)
-cv.enet <- fun_cv(data = lungdata, fit = "Elastic net", KMC = 10)
-cv.iter <- fun_cv(data = lungdata, iter= TRUE, fit = "Elastic net", KMC = 10)
-cv.bst <- fun_cv(data = lungdata, fit = "Random forest", KMC = 10)
+# cv.uni <- fun_cv(data = lungdata, fit = "Univariate", KMC = 10)
+# cv.enet <- fun_cv(data = lungdata, fit = "Elastic net", KMC = 10)
+# cv.iter <- fun_cv(data = lungdata, iter= TRUE, fit = "Elastic net", KMC = 10)
+# cv.bst <- fun_cv(data = lungdata, fit = "Random forest", KMC = 10)
+#
+# brier_est <- rbind(extract_pars_cv(cv.uni, 'brier_pred', "Univariate"),
+#                extract_pars_cv(cv.enet, 'brier_pred', "Elastic net"))
+#
+# extract_pars_cv(cv.uni, 'roc_pred', "Univariate")
+# extract_pars_cv(cv.uni, 'ci_pred', "Univariate")
+# extract_pars_cv(cv.uni, 'dev_pred', "Univariate")
+#
+# pdf('brier_cv.pdf')
+# brier_est %>%
+#   ggplot(aes(x = ibrier, col = model)) +
+#   geom_line(stat = "density") +
+#   theme_bw() +
+#   theme(legend.position = "top")
+# dev.off()
+#Create folds
+# set.seed(9)
+# folds_l <- rsample::vfold_cv(lungdata, strata = "os_deceased", v = 10)
+set.seed(9666)
+mc_samp <- rsample::mc_cv(lungdata, strata = "os_deceased", times = 100, prop = 3/4)
+mc_samp$mod_uni <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Univariate")
+mc_samp$mod_enet <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Elastic net")
+mc_samp$mod_iter <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Univariate", iterative = TRUE)
+bst <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
+mc_samp$mod_bst <- bst
+mc_samp$mod_uni2 <- uni
+purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
+mc_samp$roc_uni <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_uni2),
+                                function(splits, mod){predsurv::fun_test(
+                                  obj = mod,
+                                  train_data = splits,
+                                  data = lungdata,
+                                  pred = "ROC"
+                                )
+                                })
+mc_samp$roc_enet <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_enet),
+                                 function(splits, mod){predsurv::fun_test(
+                                   obj = mod,
+                                   train_data = splits,
+                                   data = lungdata,
+                                   pred = "ROC"
+                                 )
+                                 })
+mc_samp$roc_iter <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_iter),
+                                 function(splits, mod){predsurv::fun_test(
+                                   obj = mod,
+                                   train_data = splits,
+                                   data = lungdata,
+                                   pred = "ROC"
+                                 )
+                                 })
+mc_samp$roc_bst <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_bst),
+                                function(splits, mod){predsurv::fun_test(
+                                  obj = mod,
+                                  train_data = splits,
+                                  data = lungdata,
+                                  pred = "ROC"
+                                )
+                                })
 
-brier_est <- rbind(extract_pars_cv(cv.uni, 'brier_pred', "Univariate"),
-               extract_pars_cv(cv.enet, 'brier_pred', "Elastic net"))
-
-extract_pars_cv(cv.uni, 'roc_pred', "Univariate")
-extract_pars_cv(cv.uni, 'ci_pred', "Univariate")
-extract_pars_cv(cv.uni, 'dev_pred', "Univariate")
-
-pdf('brier_cv.pdf')
-brier_est %>%
-  ggplot(aes(x = ibrier, col = model)) +
-  geom_line(stat = "density") +
-  theme_bw() +
-  theme(legend.position = "top")
-dev.off()
