@@ -6,7 +6,8 @@
 \usage{
 fun_test(obj, train_data = train, data = lungdata, subject = subject,
   time = os_months, status = os_deceased, event_type = 1,
-  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE)
+  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE,
+  ...)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

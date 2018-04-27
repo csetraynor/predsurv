@@ -57,3 +57,20 @@ drop_na <- function(d, ..., time = os_months, n = NA){
 }
 
 
+#' Center
+#'
+#' @param
+#' d a dataset \cr
+#' ... vars to be evaluated \cr
+#' n optional parameter to assure number of rows deleted, default NA
+#' @return d a centered dataset
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom rlang !!!
+std_dat <- function(d){
+  preProcgm <-  caret::preProcess(d, method = c("center", "scale"))
+  out <- predict(preProcgm, d)
+  return(out)
+}
+
+

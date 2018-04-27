@@ -17,6 +17,7 @@
 #' @import libcoin
 #' @import mvtnorm
 #' @import rpart
+#' @import doMC
 
 fun_train <- function(train, time = os_months, status = os_deceased, fit, penalty = "BIC" , iterative = FALSE){
   time <- dplyr::enquo(time)
@@ -39,24 +40,31 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
    foldid <-  caret::createFolds(train %>% select(!!status) %>% unlist,
                                  k = 10, list = FALSE)
    #Fit models
-  if(fit == "Univariate"){
+  if(fit == "Univariate" | iterative){
     reg <- function(indep_var,dep_var,data_source) {
       formula <- as.formula(paste(dep_var," ~ ", indep_var))
       res     <- survival::coxph(formula, data = data_source)
       summary(res)
     }
-  mod1 <- lapply(colnames(trainX), FUN = reg, dep_var = "Surv(time, status)", data_source = traincoxphdata %>% dplyr::mutate(
-    time   = !!time,
-    status = !!status) )
-  #Bonferroni correction
-  mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.0005]$coefficients)
-  mod2[sapply(mod2, is.null)] <- NULL
-  features <- sapply(mod2, function(p) rownames(p))
-  coefficients <- sapply(mod2, function(p) p[,1])
-  mod <- t(data.frame(coef = coefficients))
-  names(mod) <- features
-    if(iterative & length(mod) > 0){
-    fit <-  "Elastic net"
+
+    mod1 <- lapply(colnames(trainX), FUN = reg, dep_var = "Surv(time, status)", data_source = traincoxphdata %>% dplyr::mutate(
+      time   = !!time,
+      status = !!status) )
+
+    if(iterative){
+      mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.001]$coefficients)
+    }else{
+      #Bonferroni correction
+      mod2 <- lapply(mod1, function(p) p[p$logtest["pvalue"] < 0.0005]$coefficients)
+    }
+    mod2[sapply(mod2, is.null)] <- NULL
+    features <- sapply(mod2, function(p) rownames(p))
+    coefficients <- sapply(mod2, function(p) p[,1])
+    mod <- data.frame(coef = coefficients)
+    rownames(mod) <- features
+    # print(mod)
+    if(iterative & length(mod) > 1){
+      fit <-  "Elastic net"
     }
   }
 
@@ -87,45 +95,61 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
     x <- as.matrix(trainX)
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid)
+    #register do Parallel
+    doMC::registerDoMC(cores=parallel::detectCores() - 1)
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE)
+
     # find lambda for which dev.ratio is max
-    optimal.coef <- as.matrix(coef(mod, s = "lambda.min") )
-    mod <-  optimal.coef[optimal.coef != 0,]
-    mod <- as.data.frame(mod)
+    optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
+    optimal.coef <- as.data.frame(optimal.coef)
+    colnames(optimal.coef) <- "mod"
+    optimal.coef <- tibble::rownames_to_column(optimal.coef, var = "gene")
+
+    optimal.coef <-  optimal.coef[optimal.coef$mod != 0,]
+    mod <- data.frame(coef = optimal.coef$mod)
+    rownames(mod) <- optimal.coef$gene
   }
 
   if(fit == "Ridge regression"){
      x <- as.matrix(trainX)
      y <- as.matrix(train %>%
                       dplyr::select(time = !!time, status = !!status), ncol = 2)
-     mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid) #alpha 0 ridge penalty
+     #register do Parallel
+     doMC::registerDoMC(cores=parallel::detectCores() - 1)
+     mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE) #alpha 0 ridge penalty
      # find lambda for which dev.ratio is max
+     mod <-
      optimal.coef <- as.matrix(coef(mod, s = "lambda.min") )
      mod <-  optimal.coef[optimal.coef != 0,]
      mod <- as.data.frame(mod)
    }
-   if(fit == "Elastic net" | fit == "Adapted Elastic Net"){
+   if(fit == "Elastic net"){
      alphaList <-  (1:19) * 0.05
      if(iterative){
-       print(mod)
-       x <- as.matrix(trainX %>% select(names(mod)))
+       # print(mod)
+       x <- as.matrix(trainX %>% select(rownames(mod)))
      }else{
        x <- as.matrix(trainX)
      }
     y <- as.matrix(train %>%
                         dplyr::select(time = !!time, status = !!status), ncol = 2)
+    #register do Parallel
+    doMC::registerDoMC(cores=parallel::detectCores()-1)
        elasticnet <-  lapply(alphaList, function(a){
-         glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid)});
+         glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE)});
        cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
 
        a <- alphaList[match(min(cvm), cvm)];
        mod <- elasticnet[[match(min(cvm), cvm)]]
        # find lambda for which dev.ratio is max
-       optimal.coef <- as.matrix(coef(mod, s = "lambda.min") )
-       mod <-  optimal.coef[optimal.coef != 0,]
-       mod <- t(as.data.frame(mod))
-       names(mod) <- colnames(mod)
-       attr(mod, "chosen.alpha") <- a
+       optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
+       optimal.coef <- as.data.frame(optimal.coef)
+       colnames(optimal.coef) <- "mod"
+       optimal.coef <- tibble::rownames_to_column(optimal.coef, var = "gene")
+
+       optimal.coef <-  optimal.coef[optimal.coef$mod != 0,]
+       mod <- data.frame(coef = optimal.coef$mod)
+       rownames(mod) <- optimal.coef$gene
    }
   if(fit == "Tree"){
     ### with weight-dependent log-rank scores
@@ -184,10 +208,12 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_test <- function(obj, train_data = train, data = lungdata, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE){
+fun_test <- function(obj, train_data = train, data = lungdata, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE, ...){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   subject <- dplyr::enquo(subject)
+
+  # print(train_data$id)
   #Preprocess data
   fit <- attr(obj, "fit.model")
   train_data <- as.data.frame(train_data)
@@ -198,14 +224,7 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
                         unlist) ),];
   train_data <- train_data %>% dplyr::select(- !!subject)
   test_data <- test_data %>% dplyr::select(- !!subject)
-
-  print(fit)
-
   # create coxph object with pre-defined coefficients
-    if(fit == "Univariate"){
-      selectedBeta <- obj
-    }
-
     if(fit == "Stepwise"){
       # take optimal beta from model object
       optimal.beta <- coef(obj)
@@ -214,9 +233,9 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
       selectedBeta <- optimal.beta[nonzero.coef]
     }
 
-    if(fit == "Lasso" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net" ){
+    if(fit == "Univariate" | fit == "Lasso" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net" ){
       # find lambda for which dev.ratio is max
-      selectedBeta <- names(obj)
+      selectedBeta <- rownames(obj)
     }
     if(fit == "PLS" | fit == "PCR"){
       mod <- obj;
@@ -230,9 +249,9 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
     }
     ##### No variables selected complete "shrinkage" tipycal in Lasso
     if(length(selectedBeta) == 0 & fit != "Random forest"){
-      mod <-  survival::coxph(Surv(time, status)~1,
+      mod <-  survival::coxph(Surv(time, status)~1, iter = 0,
                               data = train_data %>%
-                                dplyr::mutate(time = !!time, status = !!status))
+                              dplyr::mutate(time = !!time, status = !!status))
       # Create Test vars
       testX <- test_data %>% dplyr::select(-!!time, -!!status)
       ndata <- test_data %>% dplyr::mutate(time = !!time, status =  !!status)
@@ -251,14 +270,15 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
     }
     #Start normal prediction
     if(length(selectedBeta) > 0 & fit != "Random forest"){
-
       # Create train X take only covariates for which beta is not zero
       trainX <- train_data %>% dplyr::select(-!!time, -!!status)
-      selectedTrainX   <- as.data.frame(trainX[,colnames(trainX) %in% names(selectedBeta)])
-      colnames(selectedTrainX) <- names(selectedBeta)
+      selectedTrainX   <- as.data.frame(trainX[,colnames(trainX) %in% selectedBeta])
+      # print(selectedBeta)
+      colnames(selectedTrainX) <- selectedBeta
       traincoxphdata <- cbind(train_data %>% dplyr::select(!!time, !!status), selectedTrainX)
       #Create Cox formula
-      testBeta <- paste(names(selectedBeta), collapse = " + ")
+      testBeta <- paste(selectedBeta, collapse = " + ")
+
       form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
       #Create Cox Model
       if(fit == "Univariate" | fit == "Stepwise" | fit == "Adaptive Lasso"){
@@ -267,52 +287,71 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
           time = !!time,
           status = !!status))
       }
-      if(fit == "Lasso" | fit == "PCR" | fit == "PLS"  | fit == "Elastic net" | fit == "Ridge regression"){
+      if(fit == "Lasso" |  fit == "Elastic net" | fit == "Ridge regression"){
         #Fit model
         mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
           time = !!time,
-          status = !!status), init = selectedBeta, iter = 0,
+          status = !!status), init = as.vector(unlist(obj)), iter = 0,
           control = coxph.control(iter.max = 0))
+        # print(mod)
       }
       # Create Test vars
       testX <- test_data %>% dplyr::select(-!!time, -!!status)
-      selectedTestX <- as.data.frame(testX[,colnames(testX) %in% names(selectedBeta)])
-      colnames(selectedTestX) <- names(selectedBeta)
+      selectedTestX <- as.data.frame(testX[,colnames(testX) %in% selectedBeta])
+      colnames(selectedTestX) <- selectedBeta
       ndata <- cbind(test_data %>% dplyr::select(!!time, !!status) , selectedTestX)
-
+    }
       #Create grid of equidistant time points for testing
-      timepoints <-  seq(0, max(c(train_data %>%
-                                    dplyr::filter(!!status == event_type) %>%
-                                    dplyr::select(!!time) %>% unlist ,
-                                  test_data %>%
+      timepoints <-  seq(0, max(test_data %>%
                                     dplyr::filter(!!status == event_type) %>%
                                     dplyr::select(!!time) %>% unlist
-      ) ), length.out = 100L)
-    }
+      ) , length.out = 100L)
       ####Prediction Error
       if(pred == "Brier" | all){
-        #Calculate probs
-        probs <- pec::predictSurvProb(mod,
-                                      newdata = ndata, times = timepoints)
-        #Calculate brier score
-        brier <- pec::pec(probs, Surv(time, status) ~ 1,
-                          data = ndata %>% dplyr::mutate( time   = !!time, status = !!status),
-                          maxtime = max(timepoints),
-                          exact = F,
-                          exactness = 99L)
-        out <- brier
-        if(integrated){
-          out <- predsurv::fun_ibrier_score(out)
+        if(length(selectedBeta) == 0){
+          probs <- matrix(runif(nrow(test_data)*100), ncol = 100)
+          brier <- pec::pec(probs, Surv(time, status) ~ 1,
+                            data = test_data %>%
+                            dplyr::mutate( time   = !!time, status = !!status),
+                            maxtime = max(timepoints),
+                            exact = F,
+                            exactness = 99L)
+          out <- brier
+          if(integrated){
+            out <- pec::crps(brier, models = "Reference")[1]
+          }
+        }else{
+          #Calculate probs
+          probs <- pec::predictSurvProb(mod,
+                                        newdata = ndata, times = timepoints)
+          #Calculate brier score
+          brier <- pec::pec(probs, Surv(time, status) ~ 1,
+                            data = ndata %>%
+                            dplyr::mutate( time = !!time, status = !!status),
+                            maxtime = max(timepoints),
+                            exact = F,
+                            exactness = 99L)
+          out <- brier
+          if(integrated){
+            out <- predsurv::fun_ibrier_score(out)
+          }
         }
       }
       if(pred == "ROC" | all ){
-        probs <- predict(mod, newdata = testX, type = "lp")
-
+        if(length(selectedBeta) == 0){
+          probs <- rep(0, nrow(testX))
+          names(probs) <- rownames(testX)
+        }else{
+          # if(fit == "Lasso" |  fit == "Elastic net" | fit == "Ridge regression"){
+          #   probs <- as.matrix(testX, ncol = length(selectedBeta)) %*% obj
+          # }else{
+            probs <- predict(mod, newdata = testX, type = "lp")
+          # }
+        }
         roc <- tdROC::tdROC(X = probs,
                             Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
                             delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-                            tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .73),
-                            nboot = 0, alpha = 0.05, n.grid = 1000,  type = "uniform"
+                            tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .73), nboot = 0, alpha = 0.05, n.grid = 1000,  type = "uniform"
         )
         out <- roc
         if(integrated){
@@ -327,13 +366,18 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
         }
       }
       if(pred == "c_index" | all ){
-        ###Create your survival estimates
-        ci <-  pec::cindex(mod, formula = Surv(time, status) ~ 1,
-                           data = ndata %>% dplyr::mutate(
-                             time   = !!time, status = !!status))
-        out <- ci
-        if(integrated){
-          out <-  out$AppCindex$coxph
+        if(length(selectedBeta) == 0){
+          out <- 0.5
+        }else{
+          ###Create your survival estimates
+          ci <-  pec::cindex(mod, formula = Surv(time, status) ~ 1,
+                             data = ndata %>% dplyr::mutate(
+                               time   = !!time, status = !!status))
+          out <- ci
+          return(out)
+          if(integrated){
+            out <-  out$AppCindex$coxph
+          }
         }
       }
     if(fit == "Random forest"){
@@ -362,8 +406,8 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
     attr(out, 'roc_pred') <- roc
     attr(out, 'dev_pred') <- logl
   }
-  attr(out, 'number.of.individuals.cohort') <- nrow(train_data) + nrow(test_data)
-  attr(mod, 'predction.of.model') <- fit
+  # attr(out, 'number.of.individuals.cohort') <- nrow(train_data) + nrow(test_data)
+  # attr(mod, 'predction.of.model') <- fit
   return(out)
 }
 
@@ -388,6 +432,30 @@ fun_ibrier_score <- function(brier){
   return(ibrier)
 
 }
+
+
+#' Fit and measure measures of prognostic performance
+#' Prediction of various scores
+#' @param
+#' obj : survival model object for example a glmnet fit. \cr
+#' coef: coefficient beta is the default. \cr
+#' new_data: a test holdout dataframe default test\cr
+#' train_data : train dataframe default train\cr
+#' @return a coxph fit object
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom rlang !!
+#' @import prodlim
+fun_score <- function(train, fit, data, prediction){
+
+  obj <- predsurv::fun_train( fit = "Univariate", train = train)
+  out <- predsurv::fun_test(obj = obj, train_data = train, data = lungdata, pred = prediction)
+
+  return(out)
+
+}
+
+
 
 
 #' Var Importance

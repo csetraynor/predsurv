@@ -150,6 +150,8 @@ dev.off()
 
 ##Cross validation
 data("lungdata")
+lungdata <- tibble::rownames_to_column(lungdata, var = "subject")
+
 # cv.uni <- fun_cv(data = lungdata, fit = "Univariate", KMC = 10)
 # cv.enet <- fun_cv(data = lungdata, fit = "Elastic net", KMC = 10)
 # cv.iter <- fun_cv(data = lungdata, iter= TRUE, fit = "Elastic net", KMC = 10)
@@ -174,13 +176,14 @@ data("lungdata")
 # folds_l <- rsample::vfold_cv(lungdata, strata = "os_deceased", v = 10)
 set.seed(9666)
 mc_samp <- rsample::mc_cv(lungdata, strata = "os_deceased", times = 100, prop = 3/4)
-mc_samp$mod_uni <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Univariate")
-mc_samp$mod_enet <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Elastic net")
-mc_samp$mod_iter <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Univariate", iterative = TRUE)
-bst <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
-mc_samp$mod_bst <- bst
-mc_samp$mod_uni2 <- uni
-purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
+
+mc_samp$brier_uni <- purrr::map_dbl(mc_samp$splits, predsurv::fun_score, fit = "Univariate", data = lungdata, prediction = "Brier")
+mc_samp$brier_lasso <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Lasso")
+mc_samp$brier_enet <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Elastic net")
+mc_samp$brier_iter <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Univariate", iterative = TRUE)
+mc_samp$brier_bst  <- purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
+
+# purrr::map(mc_samp$splits, predsurv::fun_train, fit = "Random forest")
 mc_samp$roc_uni <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_uni2),
                                 function(splits, mod){predsurv::fun_test(
                                   obj = mod,
@@ -213,4 +216,4 @@ mc_samp$roc_bst <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_bst),
                                   pred = "ROC"
                                 )
                                 })
-
+load("C:/RFactory\mc_cv.RData")
