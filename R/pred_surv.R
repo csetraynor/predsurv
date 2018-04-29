@@ -311,13 +311,25 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
           time = !!time,
           status = !!status))
       }
-      if(fit == "Lasso" |  fit == "Elastic net" | fit == "Ridge regression"){
+      if(fit == "Lasso" |  fit == "Elastic net"){
+
         #Fit model
         mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
           time = !!time,
           status = !!status), init = as.vector(unlist(obj)), iter = 0,
-          control = coxph.control(iter.max = 0))
+          control = coxph.control(iter.max = 0, eps= 10e9),
+          singular.ok = TRUE)
         # print(mod)
+      }
+      if(fit == "Ridge regression"){
+        mod <-  survival::coxph(Surv(time = train_data %>%
+                                       dplyr::select(!!time) %>%
+                                       unlist,
+                                     event = train_data %>%
+                                       dplyr::select(!!status) %>%
+                                       unlist)~.,
+        init = as.vector(unlist(obj)), iter = 0,
+        data = train_data %>% dplyr::select(- !!time, - !!status))
       }
       # Create Test vars
       testX <- test_data %>% dplyr::select(-!!time, -!!status)

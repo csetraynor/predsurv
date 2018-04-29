@@ -125,6 +125,7 @@ attr(lasso.roc, 'prediction.of.model') <- "Lasso"
 attr(enet.roc, 'prediction.of.model') <- paste0("ENet (α = ", attr(my_trained_models[[4]], 'chosen.alpha'), ")")
 attr(iter.roc, 'prediction.of.model') <- paste0("Iter-ENet (α = ", attr(my_trained_models[[6]], 'chosen.alpha'), ")")
 
+
 rocplot <- roc.plot2(uni.roc, lasso.roc, enet.roc, iter.roc) +
   labs(subtitle = paste0("Time = ", round(quantile(test$os_months, .67),0 ) , " months")) + guides(fill = guide_legend(title = "Models", title.position = "top", keywidth = 10, keyheight = 1, col = guide_legend(ncol = 2)))
 

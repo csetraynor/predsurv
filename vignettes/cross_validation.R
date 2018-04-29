@@ -1,5 +1,9 @@
 ##Cross validation
+#If Windonws
 memory.limit(5e10)
+
+#Load data
+library(predsurv)
 data("lungdata")
 lungdata <- tibble::rownames_to_column(lungdata, var = "subject")
 
@@ -9,6 +13,18 @@ lungdata[,4:7132] <- std_dat(lungdata[,4:7132])
 #create resamples
 set.seed(9666)
 mc_samp <- rsample::mc_cv(lungdata, strata = "os_deceased", times = 100, prop = 3/4)
+
+##Ridge regression
+mc_samp$mod_ridge <- readRDS("performance_results/mod_ridge.RDS")
+mc_samp$brier_ridge <- purrr::pmap_dbl(list(mc_samp$splits, mc_samp$mod_ridge),
+                                       function(splits, mod){predsurv::fun_test(
+                                         obj = mod,
+                                         train_data = splits,
+                                         data = lungdata,
+                                         pred = "Brier"
+                                       )
+                                       })
+saveRDS(mc_samp$brier_ridge, "brier_ridge.RDS")
 
 
 ###Lasso
@@ -154,18 +170,19 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-mc_samp$uni <- readRDS("brier_uni.RDS")
-mc_samp$lasso <- readRDS("brier_lasso.RDS")
-mc_samp$enet <- readRDS("brier_enet.RDS")
-mc_samp$iter_enet <- readRDS("brier_iter_enet.RDS")
-mc_samp$bst <- readRDS("brier_bst.RDS")
+mc_samp$uni_brier <- readRDS("performance_results/brier_uni.RDS")
+mc_samp$lasso_brier <- readRDS("performance_results/brier_lasso.RDS")
+mc_samp$enet_brier <- readRDS("performance_results/brier_enet.RDS")
+mc_samp$brier_ridge <- readRDS("performance_results/brier_ridge.RDS")
+mc_samp$iter_enet_brier <- readRDS("performance_results/brier_iter_enet.RDS")
+mc_samp$bst_brier <- readRDS("performance_results/brier_bst.RDS")
 
 
-mc_samp$uni <- readRDS("roc_uni.RDS")
-mc_samp$lasso <- readRDS("roc_lasso.RDS")
-mc_samp$enet <- readRDS("roc_enet.RDS")
-mc_samp$iter_enet <- readRDS("roc_iter_enet.RDS")
-mc_samp$ridge <- readRDS("roc_ridge.RDS")
+mc_samp$uni_roc <- readRDS("performance_results/roc_uni.RDS")
+mc_samp$lasso_roc <- readRDS("performance_results/roc_lasso.RDS")
+mc_samp$enet_roc <- readRDS("performance_results/roc_enet.RDS")
+mc_samp$iter_enet_roc <- readRDS("performance_results/roc_iter_enet.RDS")
+mc_samp$ridge_roc <- readRDS("performance_results/roc_ridge.RDS")
 
 mc_samp %>%
   select(-splits) %>%
@@ -173,7 +190,7 @@ mc_samp %>%
   ggplot(aes(x = statistic, col = model)) +
   geom_line(stat = "density") +
   theme_bw() +
-  theme(legend.position = "top")
+  theme(legend.position = "down")
 
 library(tidyposterior)
 mc_samp <- perf_mod(mc_samp, seed = 6507, iter = 5000)

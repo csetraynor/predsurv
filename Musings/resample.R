@@ -16,7 +16,7 @@ rm_ph.ecog <- as.formula(Surv(time, status) ~           age + strata(sex))
 rm_age     <- as.formula(Surv(time, status) ~ ph.ecog +       strata(sex))
 rm_sex     <- as.formula(Surv(time, status) ~ ph.ecog + age              )
 
-mod_fit <- function(x, form, ...) 
+mod_fit <- function(x, form, ...)
   survreg(form, data = analysis(x), ...)
 
 get_concord <- function(split, mod, ...) {
@@ -45,23 +45,40 @@ library(ggplot2)
 concord_est %>%
   select(-splits) %>%
   gather() %>%
-  ggplot(aes(x = statistic, col = model)) + 
-  geom_line(stat = "density") + 
-  theme_bw() + 
+  ggplot(aes(x = statistic, col = model)) +
+  geom_line(stat = "density") +
+  theme_bw() +
   theme(legend.position = "top")
 
 library(tidyposterior)
 concord_est <- perf_mod(concord_est, seed = 6507, iter = 5000)
 
-ggplot(tidy(concord_est)) + 
+ggplot(tidy(concord_est)) +
   theme_bw()
 
 comparisons <- contrast_models(
-  concord_est, 
+  concord_est,
   list_1 = rep("full", 3),
   list_2 = c("ph.ecog", "age", "sex"),
   seed = 4654
 )
 
-ggplot(comparisons, size = 0.05) + 
+ggplot(comparisons, size = 0.05) +
   theme_bw()
+
+
+
+
+##Baseline hazard
+cox.fit.null <- coxph(Surv(time, status) ~ 1,data = as.data.frame(mc_samp$splits$`1`)  )
+cox.fit1 <- coxph(three_fact, data =as.data.frame(mc_samp$splits$`1`) )
+cox.fit2 <- coxph(rm_ph.ecog, data = as.data.frame(mc_samp$splits$`1`))
+bhnull=basehaz(cox.fit.null, centered = FALSE)
+bh1=basehaz(cox.fit1, centered = FALSE)[,1:2]
+bh2=basehaz(cox.fit2, centered = FALSE)[,1:2]
+plot(bhnull)
+plot(bh1)
+plot(bh2)
+
+
+plot(bh1[,2],bh1[,1],main="Cumulative hazard function",xlab="Time",ylab="H0(t)")
