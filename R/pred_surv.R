@@ -171,6 +171,7 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
        optimal.coef <-  optimal.coef[optimal.coef$mod != 0,]
        mod <- data.frame(coef = optimal.coef$mod)
        rownames(mod) <- optimal.coef$gene
+       attr(mod, 'chosen.alpha') <- a
    }
   if(fit == "Tree"){
     ### with weight-dependent log-rank scores
@@ -230,23 +231,28 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_test <- function(obj, train_data = train, data = lungdata, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE, ...){
+fun_test <- function(obj, train_data = train, data = lungdata, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE, noboot = 0,...){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   subject <- dplyr::enquo(subject)
 
   # print(train_data$id)
   #Preprocess data
+  #Get fit name
   fit <- attr(obj, "fit.model")
+  #transform splits to train data
   train_data <- as.data.frame(train_data)
+  #get test data from data source
   test_data <- data[!( (data %>%
                         dplyr::select(!!subject) %>%
                         unlist) %in% (train_data %>%
                         dplyr::select(!!subject) %>%
                         unlist) ),];
+  #unselect subject
   train_data <- train_data %>% dplyr::select(- !!subject)
   test_data <- test_data %>% dplyr::select(- !!subject)
-  # create coxph object with pre-defined coefficients
+  # create coxph object with pre-defined coefficients for different models
+  #currently not supported stepwise, pls, pcr
     if(fit == "Stepwise"){
       # take optimal beta from model object
       optimal.beta <- coef(obj)
@@ -254,7 +260,7 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
       nonzero.coef <- abs(optimal.beta)>0 & !is.na(optimal.beta)
       selectedBeta <- optimal.beta[nonzero.coef]
     }
-
+  #this is the most important bit, gets the fitted model and extracts the selected features
     if(fit == "Univariate" | fit == "Lasso" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net" ){
       # find lambda for which dev.ratio is max
       selectedBeta <- rownames(obj)
@@ -269,7 +275,7 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
         names(selectedBeta) <- rownames(selectedBeta)
       }
     }
-
+  #Now prepares for getting performance measures, random forest at the bottom
   if(fit != "Random forest"){
     ##### No variables selected complete "shrinkage" tipycal in Lasso
     if(length(selectedBeta) == 0 ){
@@ -279,20 +285,8 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
       # Create Test vars
       testX <- test_data %>% dplyr::select(-!!time, -!!status)
       ndata <- test_data %>% dplyr::mutate(time = !!time, status =  !!status)
-      # if(pred == "Brier"){
-      #   out <- 0.25
-      # }
-      # if(pred == "ROC"){
-      #   out <- 0.5
-      # }
-      # if(pred == "c-index"){
-      #   out <- 0.5
-      # }
-      # if(pred == "Deviance"){
-      #   out <- -2*(mod$loglik)
-      # }
     }
-    #Start normal prediction
+    #Create training and test set and formula
     if(length(selectedBeta) > 0 ){
       # Create train X take only covariates for which beta is not zero
       trainX <- train_data %>% dplyr::select(-!!time, -!!status)
@@ -306,14 +300,14 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
       form <- as.formula(paste("Surv(time, status)", " ~ ", testBeta))
       #Create Cox Model
       if(fit == "Univariate" | fit == "Stepwise" | fit == "Adaptive Lasso"){
-        #Fit model
+        ##### Fit multicovariate Cox model
         mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
           time = !!time,
           status = !!status))
       }
       if(fit == "Lasso" |  fit == "Elastic net"){
 
-        #Fit model
+        #### Fit Cox model with inits and iter 0
         mod <-  survival::coxph(form , data = traincoxphdata %>% dplyr::mutate(
           time = !!time,
           status = !!status), init = as.vector(unlist(obj)), iter = 0,
@@ -321,6 +315,7 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
           singular.ok = TRUE)
         # print(mod)
       }
+      #stack overflow for paste
       if(fit == "Ridge regression"){
         mod <-  survival::coxph(Surv(time = train_data %>%
                                        dplyr::select(!!time) %>%
@@ -342,7 +337,8 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
                                 dplyr::filter(!!status == event_type) %>%
                                 dplyr::select(!!time) %>% unlist
     ) , length.out = 100L)
-    ####Prediction Error
+    ######################################################
+    #### Prediction Error
     if(pred == "Brier" | all){
       if(length(selectedBeta) == 0){
         probs <- matrix(runif(nrow(test_data)*100), ncol = 100)
@@ -387,7 +383,7 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
       roc <- tdROC::tdROC(X = probs,
                           Y = test_data %>% dplyr::select(time = !!time)%>% unlist,
                           delta = test_data %>% dplyr::select(status = !!status)%>% unlist,
-                          tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .73), nboot = 0, alpha = 0.05, n.grid = 1000,  type = "uniform"
+                          tau = quantile(test_data %>% dplyr::select(time = !!time)%>% unlist, .73), nboot = noboot, alpha = 0.05, n.grid = 1000,  type = "uniform"
       )
       out <- roc
       if(integrated){

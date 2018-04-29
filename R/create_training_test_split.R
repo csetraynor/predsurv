@@ -21,8 +21,6 @@ create_training_test_set <- function(d, status = os_deceased,  seed = 111, perce
                         as.data.frame(x)})
   train <- train_data[[1]];
   test <-  d[!(d$subject %in% train$subject ),];
-  train$subject <- NULL
-  test$subject <- NULL
 
   # train <- train %>% dplyr::select(- !!y)
   # test <- test %>% dplyr::select(- !!y)

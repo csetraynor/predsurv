@@ -169,39 +169,145 @@ mc_samp$brier_bst <- NULL
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+##Plot Brier
+mc_samp$uni <- readRDS("performance_results/brier_uni.RDS")
+mc_samp$lasso <- readRDS("performance_results/brier_lasso.RDS")
+mc_samp$enet <- readRDS("performance_results/brier_enet.RDS")
+mc_samp$ridge <- readRDS("performance_results/brier_ridge.RDS")
+mc_samp$iter<- readRDS("performance_results/brier_iter_enet.RDS")
+mc_samp$bst <- unlist(readRDS("performance_results/brier_bst.RDS"))
 
-mc_samp$uni_brier <- readRDS("performance_results/brier_uni.RDS")
-mc_samp$lasso_brier <- readRDS("performance_results/brier_lasso.RDS")
-mc_samp$enet_brier <- readRDS("performance_results/brier_enet.RDS")
-mc_samp$brier_ridge <- readRDS("performance_results/brier_ridge.RDS")
-mc_samp$iter_enet_brier <- readRDS("performance_results/brier_iter_enet.RDS")
-mc_samp$bst_brier <- readRDS("performance_results/brier_bst.RDS")
 
-
-mc_samp$uni_roc <- readRDS("performance_results/roc_uni.RDS")
-mc_samp$lasso_roc <- readRDS("performance_results/roc_lasso.RDS")
-mc_samp$enet_roc <- readRDS("performance_results/roc_enet.RDS")
-mc_samp$iter_enet_roc <- readRDS("performance_results/roc_iter_enet.RDS")
-mc_samp$ridge_roc <- readRDS("performance_results/roc_ridge.RDS")
-
-mc_samp %>%
-  select(-splits) %>%
+brier_dens <- mc_samp %>%
+  dplyr::select(-splits) %>%
   gather() %>%
   ggplot(aes(x = statistic, col = model)) +
   geom_line(stat = "density") +
   theme_bw() +
-  theme(legend.position = "down")
+  theme(legend.position = "bottom")
+brier_dens <- brier_dens +
+  labs(x = "Integrated Brier Score",
+       title = "Density of iBrier") +
+  geom_vline(xintercept =  0.25 , linetype = "dotted" )
 
 library(tidyposterior)
-mc_samp <- perf_mod(mc_samp, seed = 6507, iter = 5000)
+mc_samp_brier <- tidyposterior::perf_mod(mc_samp, seed = 6507, iter = 5000)
 
-ggplot(tidy(mc_samp)) +
-  theme_bw()
+mbri_tab <- summary(tidy(mc_samp_brier))
+mbri_tab <- as.data.frame(mbri_tab)
+
+star = stargazer(mbri_tab, type = "latex", summary = FALSE, digits.extra = 3,digits = 3, digit.separator = ".",
+                 title = "Bayesian analysis of resampling AUC")
 
 
-comparisons <- contrast_models(
-  mc_samp,
-  list_1 = rep("full", 3),
-  list_2 = c("ph.ecog", "age", "sex"),
+stargazer(mbri_tab, type = "latex", summary = FALSE, digits.extra = 3,
+          digits = 3, digit.separator = ".",
+          title = "Bayesian analysis of resampling AUC")
+
+
+posterior_brier <- ggplot(tidy(mc_samp_brier)) +
+  theme_bw()+
+  labs(
+       title = "Posterior probability for integrated Brier Score")
+posterior_brier <- posterior_brier +   labs(
+  title = "Posterior probability of iBrier")
+
+comparisons_brier <- contrast_models(
+  mc_samp_brier,
+  list_1 = rep("ridge", 5),
+  list_2 = c("uni", "bst", "enet", "lasso", "iter"),
   seed = 4654
 )
+
+compare_brier <- ggplot(comparisons_brier, size = 0.05) +
+  theme_bw()+
+  labs(
+    title = "Posterior probability of iBrier.",
+subtitle ="Benchmark: ridge regression")
+
+compare_brier <- compare_brier +   labs(
+  title = "Posterior probability for iBrier",
+  subtitle ="Benchmark: ridge regression")
+
+#### ROC
+
+mc_samp$uni <- readRDS("performance_results/roc_uni.RDS")
+mc_samp$lasso <- readRDS("performance_results/roc_lasso.RDS")
+mc_samp$enet <- readRDS("performance_results/roc_enet.RDS")
+mc_samp$iter <- readRDS("performance_results/roc_iter_enet.RDS")
+mc_samp$ridge <- readRDS("performance_results/roc_ridge.RDS")
+mc_samp$bst <- NULL
+roc_dens <- mc_samp %>%
+  dplyr::select(-splits) %>%
+  gather() %>%
+  ggplot(aes(x = statistic, col = model)) +
+  geom_line(stat = "density") +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  labs(x = "AUC-ROC",
+      title = "Density of AUC-ROC") +
+  geom_vline(xintercept =  0.5, linetype = "dotted" )+
+  ylim(0,5)
+
+mc_samp_roc <- tidyposterior::perf_mod(mc_samp, seed = 6507, iter = 5000, hetero_var = TRUE)
+
+mcroc_tab <- summary(tidy(mc_samp_roc))
+mcroc_tab <- as.data.frame(mcroc_tab)
+stargazer(mcroc_tab, type = "latex", summary = FALSE,
+          title = "Bayesian analysis of resampling AUC",
+          digits = 3, digits.extra = 3)
+
+
+posterior_roc <- ggplot(tidy(mc_samp_roc)) +
+  theme_bw()+
+  labs(
+    title = "Posterior probability of AUC-ROC")+
+  geom_hline(yintercept = 0.5, linetype = "dotted" )
+
+
+comparisons_roc <- contrast_models(
+  mc_samp_roc,
+  list_1 = rep("ridge", 4),
+  list_2 = c("uni", "enet", "lasso", "iter"),
+  seed = 4654
+)
+
+compare_roc <- ggplot(comparisons_roc, size = 0.05) +
+  theme_bw()+
+  labs(
+    title = "Posterior probability of AUC-ROC.",
+subtitle = "Benchmark: ridge")
+
+
+
+pdf('lung_mcmc.pdf')
+ggpubr::ggarrange(brier_dens,  posterior_brier,
+                  roc_dens, posterior_roc,
+                  labels = c("A", "B", "C", "D"),
+                  ncol = 2, nrow = 2)
+dev.off()
+
+pdf('lung_mcmc_compare.pdf')
+ggpubr::ggarrange(compare_brier, compare_roc,
+                  labels = c("A", "B"),
+                  ncol = 2, nrow = 1)
+dev.off()
+
+library(stargazer)
+
+tab_roc <- summary(comparisons_roc, size = 0.05) %>%
+  select(contrast, starts_with("pract"))
+tab_roc <- as.data.frame(tab_roc)
+
+
+stargazer(tab_roc, type = "latex", summary = FALSE,
+          title = "Posterior distribution of AUC compared to ridge regression", digits = 3, digit.separate = 3)
+
+
+tab_brier <- summary(comparisons_brier, size = 0.05) %>%
+  select(contrast, starts_with("pract"))
+
+tab_brier <- as.data.frame(tab_brier)
+
+stargazer(tab_brier, type = "latex", summary = FALSE,
+          title = "Posterior distribution of iBrier compared to ridge regression", digits = 3, digit.separate = 3)
