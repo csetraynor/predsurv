@@ -10,7 +10,7 @@
 #' @export
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
-create_training_test_set <- function(d, status = os_deceased,  seed = 111, percent = 0.8){
+create_training_test_set <- function(d, status = os_deceased,  seed = 111, percent = 0.8, mc=FALSE){
   set.seed(seed)
 
   status <- dplyr::enquo(status)
@@ -20,7 +20,10 @@ create_training_test_set <- function(d, status = os_deceased,  seed = 111, perce
                         function(x) {
                         as.data.frame(x)})
   train <- train_data[[1]];
-  test <-  d[!(d$subject %in% train$subject ),];
+  if(mc){
+    test <-  d[!(d$subject %in% train$subject ),];}
+  else {test <- survdata[!(rownames(survdata) %in% rownames(train)),]}
+
 
   # train <- train %>% dplyr::select(- !!y)
   # test <- test %>% dplyr::select(- !!y)

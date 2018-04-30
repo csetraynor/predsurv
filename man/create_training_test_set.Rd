@@ -5,7 +5,7 @@
 \title{Create training test split}
 \usage{
 create_training_test_set(d, status = os_deceased, seed = 111,
-  percent = 0.8)
+  percent = 0.8, mc = FALSE)
 }
 \arguments{
 \item{d}{a dataset \cr

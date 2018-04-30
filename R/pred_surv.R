@@ -231,7 +231,7 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 #' @import prodlim
-fun_test <- function(obj, train_data = train, data = lungdata, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE, noboot = 0,...){
+fun_test <- function(obj, train_data = train, test_data = NA,  data = NA, subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier", adapted = "default", all = FALSE, integrated = TRUE, noboot = 0, mc = FALSE, ...){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   subject <- dplyr::enquo(subject)
@@ -243,14 +243,16 @@ fun_test <- function(obj, train_data = train, data = lungdata, subject = subject
   #transform splits to train data
   train_data <- as.data.frame(train_data)
   #get test data from data source
-  test_data <- data[!( (data %>%
-                        dplyr::select(!!subject) %>%
-                        unlist) %in% (train_data %>%
-                        dplyr::select(!!subject) %>%
-                        unlist) ),];
-  #unselect subject
-  train_data <- train_data %>% dplyr::select(- !!subject)
-  test_data <- test_data %>% dplyr::select(- !!subject)
+  if(mc){
+    test_data <- data[!( (data %>%
+                            dplyr::select(!!subject) %>%
+                            unlist) %in% (train_data %>%
+                                            dplyr::select(!!subject) %>%
+                                            unlist) ),];
+    #unselect subject
+    train_data <- train_data %>% dplyr::select(- !!subject)
+    test_data <- test_data %>% dplyr::select(- !!subject)
+  }
   # create coxph object with pre-defined coefficients for different models
   #currently not supported stepwise, pls, pcr
     if(fit == "Stepwise"){

@@ -8,14 +8,14 @@
 #' @return simulated data
 #' @export
 #' @importFrom magrittr %>%
-surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.02, CenRate = 1/100, init = FALSE) {
+surv_sim_data <- function(  N = 80, features = 100, seed = 111, p = 0.1, CenRate = 1/100, init = FALSE) {
 
   if(!init){
     X = matrix(rnorm(features*N, mean = 0, sd = 1),ncol=  features)
     beta = rep(0, features)
     #actual beta
     active <- round(features * p, 0 )
-    beta_active <- rcauchy(active, 0,1)
+    beta_active <- rnorm(active, 0, 1)
     beta[1:active] <- beta_active
     beta <- sample(beta)
     #set alpha
