@@ -3,7 +3,9 @@
 \docType{data}
 \name{lungdata}
 \alias{lungdata}
-\title{Microarray Dataset}
+\title{Clinical and microarray data from the TCGA dataset
+A dataset containing the survival outcome in lung cancer TCGA trial
+Lung adenocarcinomas were profiled by Beer et al. (2002) using Affymetrix hu6800 microarrays. The data here were normalized from raw .CEL files by RMAExpress (v0.3). The expression matrix contains expression data for 86 patients with 7,129 probe sets.}
 \format{Gene expression matrix and survival outcome data frame (time, cens).
 \describe{
   \item{time}{Actual survival months observed}
@@ -15,6 +17,8 @@
 lungdata
 }
 \description{
+Clinical and microarray data from the TCGA dataset
+A dataset containing the survival outcome in lung cancer TCGA trial
 Lung adenocarcinomas were profiled by Beer et al. (2002) using Affymetrix hu6800 microarrays. The data here were normalized from raw .CEL files by RMAExpress (v0.3). The expression matrix contains expression data for 86 patients with 7,129 probe sets.
 }
 \keyword{datasets}

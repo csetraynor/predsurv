@@ -16,6 +16,8 @@ Imports:
 		caret,
 		ipred,
 		doParallel,
+		magrittr,
+		rlang,
 		survival,
 		tdROC,
 		glmnet,

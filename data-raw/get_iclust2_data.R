@@ -1,5 +1,5 @@
 ######
-#download data
+# #download data
 library(cgdsr)
 library(dplyr)
 library(readr)
@@ -22,5 +22,13 @@ clinicaldata$patient_id <- gsub( "\\.","-", clinicaldata$patient_id)
 glimpse(clinicaldata)
 clinicaldata <- clinicaldata %>%
   select(patient_id, intclust, npi, age_at_diagnosis, os_months, os_status)
+metabric_clinical_data <- clinicaldata
+devtools::use_data(metabric_clinical_data)
+# Get genomic data
+##### Can be downloaded from http://www.cbioportal.org/study?id=brca_metabric#summary to download, follow the link-> Download data
+genedata <- readr::read_tsv("C:/RFactory/Downloads/brca_metabric/data_expression.txt", col_names = TRUE)
+object.size(gendata)
+###Which is too heavy to upload
 
+rm(list=ls())
 
