@@ -39,16 +39,19 @@ roc.plot2 <- function(...,x.var="false positive rate",y.var="true positive rate"
     roc.data <- data.frame(
       x = 1 -unlist(fitList[[i]]$ROC["spec"]),
       y = unlist(fitList[[i]]$ROC["sens"]),
-      model=paste0(paste(deparse(attr(fitList[[i]], "prediction.of.model") ),collapse = " ") ," ", round(fitList[[i]]$AUC[1], 2),
-              " (",round(fitList[[i]]$AUC[3], 2),
-              " - ", round(fitList[[i]]$AUC[4], 2), " )" ) )
+      model=paste(deparse(attr(fitList[[i]], "prediction.of.model"))))
+
+      # ,
+      # model=paste0(paste(deparse(attr(fitList[[i]], "prediction.of.model") ),collapse = " ") ," ", round(fitList[[i]]$AUC[1], 2),
+      #         " (",round(fitList[[i]]$AUC[3], 2),
+      #         " - ", round(fitList[[i]]$AUC[4], 2), " )" ) )
 
     arrange(roc.data,y)
   })
 
   p <- ggplot(roc.data, aes(x, y)) + theme_bw() +
     geom_line(aes(colour=model)) +
-    guides(col = guide_legend(ncol = 1,title=NULL)) + theme(legend.position="bottom") +
+    guides(col = guide_legend(nrow = 2,title= "Key:",keywidth = 0.5, keyheight = 1)) + theme(legend.position="bottom") +
     labs(title = "time dependent ROC")
   if(ident) p <- p + geom_abline(slope=1,alpha=0.2)
   p <- p + scale_x_continuous(x.lab)
@@ -77,15 +80,16 @@ plot_brier2 <- function(...,x.var="Time",y.var="Brier Score",x.lab=x.var,y.lab=y
     brier.data <- data.frame(
       x = unlist(brierList[[i]]$time) ,
       y = unlist(brierList[[i]]$AppErr[[2]]),
-      model=paste0(paste(deparse(attr(brierList[[i]], "prediction.of.model") ),collapse = "\n"), " (iBrier = ", round(ibrier[[i]][1], 2) ,")" ) )
+      model=paste(deparse(attr(brierList[[i]], "prediction.of.model"))))
+
+      # model=paste0(paste(deparse(attr(brierList[[i]], "prediction.of.model") ),collapse = "\n"), " (iBrier = ", round(ibrier[[i]][1], 2) ,")" ) )
 
   })
 
   p <- ggplot(brier.data, aes(x, y)) + theme_bw() +
     geom_line(aes(colour=model)) +
-    guides(col = guide_legend(ncol = 1,title=NULL)) +
-    theme(legend.position="bottom")+
-    labs(title = "Brier score", subtitles = paste0("Max time = ", deparse(round(brierList[[1]]$maxtime)), " months" ))
+    guides(col = guide_legend(nrow = 2,title="Key:",keywidth = 0.5, keyheight = 1)) +
+    theme(legend.position="bottom")
   if(ident) p <- p + geom_abline(slope=1,alpha=0.2)
   p <- p + scale_x_continuous(x.lab)
   p <- p + scale_y_continuous(y.lab)

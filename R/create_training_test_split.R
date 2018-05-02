@@ -20,9 +20,9 @@ create_training_test_set <- function(d, status = os_deceased,  seed = 111, perce
                         function(x) {
                         as.data.frame(x)})
   train <- train_data[[1]];
-  if(mc){
+  if('subject' %in% colnames(train)){
     test <-  d[!(d$subject %in% train$subject ),];}
-  else {test <- survdata[!(rownames(survdata) %in% rownames(train)),]}
+  else {test <- d[!(rownames(d) %in% rownames(train)),]}
 
 
   # train <- train %>% dplyr::select(- !!y)

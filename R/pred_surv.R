@@ -72,7 +72,7 @@ fun_train <- function(train, time = os_months, status = os_deceased, fit, penalt
 
     if(iterative & length(mod) > 1){
       # change to elastic net
-      fit <-  "Elastic net"
+      fit <-  "Stepwise"
     }
   }
    #Stepwise fit, currently not recommended computationally too expensive
@@ -243,7 +243,7 @@ fun_test <- function(obj, train_data = train, test_data = NA,  data = NA, subjec
   #transform splits to train data
   train_data <- as.data.frame(train_data)
   #get test data from data source
-  if(mc){
+  if('subject' %in% colnames(train)){
     test_data <- data[!( (data %>%
                             dplyr::select(!!subject) %>%
                             unlist) %in% (train_data %>%
