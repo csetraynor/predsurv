@@ -2,8 +2,8 @@
 
 This package includes relevant code and figures of various prognostic models in patient outcome analysis.
 Advanced modeling techniques are available as well as measures to asses model performance.
-The main functions are wrapped in module blocks mostly from relevant R packages such as glmnet, pec, or survival.
-This package is perfect for fitting, assesing and visualizing this relevant measures.
+The main functions are wrapped in module blocks mostly from R packages such as glmnet, pec, or survival.
+This package is perfect for fitting, assesing and visualizing this measures.
 We will review the most relevant methods including adaptations to the use of high throughput data in the vignette.
 
 
