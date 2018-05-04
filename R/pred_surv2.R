@@ -17,9 +17,8 @@
 #' @import libcoin
 #' @import mvtnorm
 #' @import rpart
-#' @import doMC
 
-fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, fit, penalty = "BIC" , iterative = FALSE, subject = patient_id, ...){
+fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, ...){
 
   ###### abstract dependent vars
   time <- dplyr::enquo(time)
@@ -31,7 +30,7 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
   hold_out <- as.data.frame(hold_out)
 
   #### obtain training datset
-  if('subject' %in% colnames(data)){
+  if('patient_id' %in% colnames(data)){
   train <- data[!( (data %>%
                            dplyr::select(!!subject) %>%
                            unlist) %in% (hold_out %>%
@@ -44,9 +43,6 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
   # create predictor matrix
   trainX <- train %>% dplyr::select(-!!time, -!!status)
 
-  ##### create formula
-  form <- as.formula(paste("Surv(time, status)", paste("~", paste(names(trainX), collapse = " + "), sep = " " )))
-
   ###### create fold id for CV in glmnet
   set.seed(9)
   foldid <-  caret::createFolds(train %>% select(!!status) %>% unlist,
@@ -54,8 +50,7 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
 
   ##### create penalty.factor vector
   p.fac = rep(1, ncol(trainX))
-  p.fac[match("npi", colnames(trainX))] = 0
-
+  p.fac[match(c("npi","age_std"), colnames(trainX))] = 0
   ###### Fit models
   #Lasso
   if(fit == "Lasso" ){
@@ -64,9 +59,13 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     #register for parallelisation cv
-    doMC::registerDoMC(cores=parallel::detectCores() - 1)
+    # doParallel::registerDoParallel(cores=parallel::detectCores() - 1)
     #fit glmlasso
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)
+
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = lambda, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
+
+    #Stop Parallel
+    # doParallel::stopImplicitCluster()
 
     # find optimised lambda
     optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
@@ -84,8 +83,8 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     #register do Parallel
-    doMC::registerDoMC(cores=parallel::detectCores() - 1)
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)
+
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
     # find optimised lambda
     optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
     optimal.coef <- as.data.frame(optimal.coef)
@@ -103,14 +102,14 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
       x <- as.matrix(trainX)
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
-    #register for parallelisation
-    doMC::registerDoMC(cores=parallel::detectCores()-1)
+
+
     #do crossvalidation to find optimal alpha and lambda
     elasticnet <-  lapply(alphaList, function(a){
-      glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)});
+      glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)});
     #extract optimal lambda
     cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
-    doParallel::stopImplicitCluster()
+
     a <- alphaList[match(min(cvm), cvm)];
     mod <- elasticnet[[match(min(cvm), cvm)]]
 

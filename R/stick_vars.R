@@ -25,7 +25,8 @@ stick_vars <- function(clidata, genedata){
 
   ##Get dataframe back
   t_gene_expression <- as.data.frame(t_gene_matrix)
-  colnames(t_gene_matrix) <- genedata %>% dplyr::select(Hugo_Symbol) %>% unlist
+
+  colnames(t_gene_matrix) <- paste("feature",as.character(1:ncol(t_gene_matrix)),sep="")
 
   ### cbind clinical and genomic data
   out <- cbind(Y, t_gene_matrix)

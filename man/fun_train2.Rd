@@ -4,8 +4,8 @@
 \alias{fun_train2}
 \title{Fit Model to Training data}
 \usage{
-fun_train2(data, hold_out, time = os_months, status = os_deceased, fit,
-  penalty = "BIC", iterative = FALSE, subject = patient_id, ...)
+fun_train2(hold_out, data, time = os_months, status = os_deceased, fit,
+  subject = patient_id, lambda = 0.001, ...)
 }
 \arguments{
 \item{train}{: train data \cr
