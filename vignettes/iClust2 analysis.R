@@ -49,8 +49,6 @@ brca$intclust <- NULL
 set.seed(9666)
 mc_samp <- rsample::mc_cv(iclust2, strata = "os_deceased", times = 100, prop = 1/4)
 
-<<<<<<< HEAD
-
 
 ####Train models with pooled data
 mc_samp$mod_enet_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Elastic net", data = brca, lambda = 0.0001)
@@ -87,7 +85,6 @@ mod_lasso_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso"
 saveRDS(mod_lasso_pool, "mod_lasso_pool.RDS")
 mod_lasso_pool <- NULL
 
->>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
 mc_samp$mod_lasso2 <- readRDS("mod_lasso2.RDS")
 
 ####Train models with iclust2
