@@ -17,21 +17,20 @@
 #' @import libcoin
 #' @import mvtnorm
 #' @import rpart
-#' @import doMC
 
-fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, fit, penalty = "BIC" , iterative = FALSE, subject = patient_id, ...){
+fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, preCut = TRUE, ...){
 
   ###### abstract dependent vars
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   subject <- dplyr::enquo(subject)
   # drop_var <- dplyr::quos(...)
-
+  print(unlist(hold_out$id))
   ##### convert to dataset
   hold_out <- as.data.frame(hold_out)
 
   #### obtain training datset
-  if('subject' %in% colnames(data)){
+  if('patient_id' %in% colnames(data)){
   train <- data[!( (data %>%
                            dplyr::select(!!subject) %>%
                            unlist) %in% (hold_out %>%
@@ -44,19 +43,13 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
   # create predictor matrix
   trainX <- train %>% dplyr::select(-!!time, -!!status)
 
-  ##### create formula
-  form <- as.formula(paste("Surv(time, status)", paste("~", paste(names(trainX), collapse = " + "), sep = " " )))
-
   ###### create fold id for CV in glmnet
   set.seed(9)
   foldid <-  caret::createFolds(train %>% select(!!status) %>% unlist,
                                 k = 10, list = FALSE)
 
-  ##### create penalty.factor vector
-  p.fac = rep(1, ncol(trainX))
-  p.fac[match("npi", colnames(trainX))] = 0
-
   ###### Fit models
+
   #Lasso
   if(fit == "Lasso" ){
     #prepare data for glmlasso
@@ -64,9 +57,12 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     #register for parallelisation cv
-    doMC::registerDoMC(cores=parallel::detectCores() - 1)
-    #fit glmlasso
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)
+
+    # doParallel::registerDoParallel(cores=parallel::detectCores() - 1)
+    # #fit glmlasso
+    # doMC::registerDoMC(cores=4)
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = lambda, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
+    print("Done!")
 
     # find optimised lambda
     optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
@@ -97,34 +93,60 @@ fun_train2 <- function(data, hold_out, time = os_months, status = os_deceased, f
     rownames(mod) <- optimal.coef$gene
   }
   if(fit == "Elastic net"){
-    #create a sequence of alpha
-    alphaList <-  (1:19) * 0.05
-    #prepare for glmnet
-      x <- as.matrix(trainX)
-    y <- as.matrix(train %>%
-                     dplyr::select(time = !!time, status = !!status), ncol = 2)
-    #register for parallelisation
-    doMC::registerDoMC(cores=parallel::detectCores()-1)
-    #do crossvalidation to find optimal alpha and lambda
-    elasticnet <-  lapply(alphaList, function(a){
-      glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)});
-    #extract optimal lambda
-    cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
-    doParallel::stopImplicitCluster()
-    a <- alphaList[match(min(cvm), cvm)];
-    mod <- elasticnet[[match(min(cvm), cvm)]]
+    ##### For computational burden apply preUni
+      #create formula for apply loop
+      reg <- function(indep_var,dep_var,data_source) {
+        formula <- as.formula(paste(dep_var," ~ ", indep_var))
+        res     <- survival::coxph(formula, data = data_source)
+        summary(res)
+      }
 
-    # find lambda for which dev.ratio is max
-    optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
-    optimal.coef <- as.data.frame(optimal.coef)
-    colnames(optimal.coef) <- "mod"
-    optimal.coef <- tibble::rownames_to_column(optimal.coef, var = "gene")
+      #### fit univariate cox models with each covariate
+      mod1 <- lapply(colnames(trainX %>%
+                                dplyr::select(-npi, -age_std)),
+                     FUN = reg, dep_var = "Surv(time, status)",
+                     data_source = train %>% dplyr::mutate(
+        time   = !!time,
+        status = !!status) )
+      #soft correction
+      mod2 <- lapply(mod1,
+                     function(p)
+                       p[p$logtest["pvalue"] < 0.01]$coefficients)
+      ### drop covariates that are not "statistically significant"
+      mod2[sapply(mod2, is.null)] <- NULL
+      features <- sapply(mod2, function(p) rownames(p))
+      coefficients <- sapply(mod2, function(p) p[,1])
+      mod <- data.frame(coef = coefficients)
+      rownames(mod) <- features
+      #prepare for enet
+      x <- cbind(trainX %>% dplyr::select(rownames(mod)),
+                           trainX %>% dplyr::select(npi, age_std))
+      ##### create penalty.factor vector
+      p.fac = rep(1, ncol(x))
+      p.fac[match(c("npi","age_std"), colnames(x))] = 0
+      #### prepare matrix
+      x <- as.matrix(x)
+      y <- as.matrix(train %>%
+                       dplyr::select(time = !!time,
+                                     status = !!status), ncol = 2)
+      ##################################################
+      #Elastic net
 
-    optimal.coef <-  optimal.coef[optimal.coef$mod != 0,]
-    mod <- data.frame(coef = optimal.coef$mod)
-    rownames(mod) <- optimal.coef$gene
-    attr(mod, 'chosen.alpha') <- a
-  }
+      ### Apply elastic net with a=0.8 closer to Lasso
+      mod <-  glmnet::cv.glmnet(x, y, family = "cox",
+        grouped = TRUE, lambda.min.ratio = lambda, alpha = 0.8,
+        foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
+      print("Done!")
+
+      # find optimised lambda
+      optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
+      optimal.coef <- as.data.frame(optimal.coef)
+      colnames(optimal.coef) <- "mod"
+      optimal.coef <- tibble::rownames_to_column(optimal.coef, var = "gene")
+      optimal.coef <-  optimal.coef[optimal.coef$mod != 0,]
+      mod <- data.frame(coef = optimal.coef$mod)
+      rownames(mod) <- optimal.coef$gene
+    }
    if(fit == "Random forest"){
     train_tree <- as.data.frame(train %>%
                                   dplyr::rename(
