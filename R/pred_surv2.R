@@ -18,7 +18,11 @@
 #' @import mvtnorm
 #' @import rpart
 
+<<<<<<< HEAD
 fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, preCut = TRUE, ...){
+=======
+fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, ...){
+>>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
 
   ###### abstract dependent vars
   time <- dplyr::enquo(time)
@@ -48,6 +52,12 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
   foldid <-  caret::createFolds(train %>% select(!!status) %>% unlist,
                                 k = 10, list = FALSE)
 
+<<<<<<< HEAD
+=======
+  ##### create penalty.factor vector
+  p.fac = rep(1, ncol(trainX))
+  p.fac[match(c("npi","age_std"), colnames(trainX))] = 0
+>>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
   ###### Fit models
 
   #Lasso
@@ -57,12 +67,22 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     #register for parallelisation cv
+<<<<<<< HEAD
 
     # doParallel::registerDoParallel(cores=parallel::detectCores() - 1)
     # #fit glmlasso
     # doMC::registerDoMC(cores=4)
     mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = lambda, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
     print("Done!")
+=======
+    # doParallel::registerDoParallel(cores=parallel::detectCores() - 1)
+    #fit glmlasso
+
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE, lambda.min.ratio = lambda, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
+
+    #Stop Parallel
+    # doParallel::stopImplicitCluster()
+>>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
 
     # find optimised lambda
     optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
@@ -80,8 +100,8 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
     y <- as.matrix(train %>%
                      dplyr::select(time = !!time, status = !!status), ncol = 2)
     #register do Parallel
-    doMC::registerDoMC(cores=parallel::detectCores() - 1)
-    mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = TRUE, penalty.factor = p.fac)
+
+    mod <-  glmnet::cv.glmnet(x, y, family = "cox", alpha = 0 ,grouped = TRUE, lambda.min.ratio = 0.001, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
     # find optimised lambda
     optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))
     optimal.coef <- as.data.frame(optimal.coef)
@@ -93,6 +113,7 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
     rownames(mod) <- optimal.coef$gene
   }
   if(fit == "Elastic net"){
+<<<<<<< HEAD
     ##### For computational burden apply preUni
       #create formula for apply loop
       reg <- function(indep_var,dep_var,data_source) {
@@ -100,6 +121,24 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
         res     <- survival::coxph(formula, data = data_source)
         summary(res)
       }
+=======
+    #create a sequence of alpha
+    alphaList <-  (1:19) * 0.05
+    #prepare for glmnet
+      x <- as.matrix(trainX)
+    y <- as.matrix(train %>%
+                     dplyr::select(time = !!time, status = !!status), ncol = 2)
+
+
+    #do crossvalidation to find optimal alpha and lambda
+    elasticnet <-  lapply(alphaList, function(a){
+      glmnet::cv.glmnet(x, y, family = "cox", grouped = TRUE , alpha = a, lambda.min.ratio = 0.001, foldid = foldid, parallel = FALSE, penalty.factor = p.fac)});
+    #extract optimal lambda
+    cvm <- sapply(seq_along(alphaList), function(i) min(elasticnet[[i]]$cvm ) );
+
+    a <- alphaList[match(min(cvm), cvm)];
+    mod <- elasticnet[[match(min(cvm), cvm)]]
+>>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
 
       #### fit univariate cox models with each covariate
       mod1 <- lapply(colnames(trainX %>%

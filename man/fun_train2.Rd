@@ -5,7 +5,11 @@
 \title{Fit Model to Training data}
 \usage{
 fun_train2(hold_out, data, time = os_months, status = os_deceased, fit,
+<<<<<<< HEAD
   subject = patient_id, lambda = 0.001, preCut = TRUE, ...)
+=======
+  subject = patient_id, lambda = 0.001, ...)
+>>>>>>> 80e0aa1757dcfc9309be6ff879774478dca18126
 }
 \arguments{
 \item{train}{: train data \cr
