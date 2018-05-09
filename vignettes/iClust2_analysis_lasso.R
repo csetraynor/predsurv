@@ -1,7 +1,6 @@
 ###iClust2 Analyses
 
 library(predsurv)
-devtools::document()
 data("metabric_clinical_data")
 
 ##### Data pre-process #######
@@ -15,7 +14,6 @@ metabric_clinical_data$os_months <- ifelse(metabric_clinical_data$os_months == 0
 # Get genomic data
 ##### Can be downloaded from http://www.cbioportal.org/study?id=brca_metabric#summary to download, follow the link-> Download data
 genedata <- readr::read_tsv("C:/RFactory/Downloads/brca_metabric/data_expression.txt", col_names = TRUE)
-#genedata <- readr::read_tsv("brca_metabric/data_expression.txt", col_names = TRUE)
 object.size(genedata)
 ###Which is too heavy to upload
 
@@ -51,31 +49,6 @@ set.seed(9666)
 mc_samp <- rsample::mc_cv(iclust2, strata = "os_deceased", times = 100, prop = 1/4)
 
 memory.limit(10e10)
-
-####Train models with pooled data
-mc_samp$mod_enet_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Elastic net", data = brca, lambda = 0.0001)
-saveRDS(mc_samp$mod_enet_pool, "mod_enet_pool.RDS")
-mc_samp$mod_enet_pool <- NULL
-
-####Train models with iclust2
-mc_samp$mod_enet_2 <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Elastic net", data = iclust2, lambda = 0.001)
-saveRDS(mc_samp$mod_enet_2, "mod_enet_2.RDS")
-mc_samp$mod_enet_2 <- NULL
-
-
-
-memory.limit(10e10)
-####Train models with iclust2
-mc_samp$mod_lasso2 <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso", data = iclust2, lambda = 0.001)
-saveRDS(mc_samp$mod_lasso2, "mod_lasso2.RDS")
-mc_samp$mod_lasso2 <- NULL
-
-####Train models with pooled data
-mod_lasso_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso", data = brca, lambda = 0.001)
-saveRDS(mod_lasso_pool, "mod_lasso_pool.RDS")
-mod_lasso_pool <- NULL
-
-memory.limit(10e10)
 ####Train models with iclust2
 mc_samp$mod_lasso2 <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso", data = iclust2, lambda = 0.01)
 saveRDS(mc_samp$mod_lasso2, "mod_lasso2.RDS")
@@ -83,7 +56,7 @@ mc_samp$mod_lasso2 <- NULL
 
 ####Train models with pooled data
 mod_lasso_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso", data = brca, lambda = 0.001)
-saveRDS(mod_lasso_pool, "mod_lasso_pool.RDS")
+saveRDS(mod_lasso_pool, "\\\\mokey.ads.warwick.ac.uk/User41/u/u1795546/Documents/models/mod_lasso_pool.RDS")
 mod_lasso_pool <- NULL
 
 mc_samp$mod_lasso2 <- readRDS("mod_lasso2.RDS")

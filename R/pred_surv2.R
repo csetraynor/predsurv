@@ -94,24 +94,33 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
     rownames(mod) <- optimal.coef$gene
   }
   if(fit == "Elastic net"){
+    #create formula for apply loop
+    reg <- function(indep_var,dep_var,data_source) {
+      formula <- as.formula(paste(dep_var," ~ ", indep_var))
+      res     <- survival::coxph(formula, data = data_source)
+      res <- summary(res)
+      out <- ifelse(res$logtest["pvalue"] < 0.01, res$coefficients,
+                    NA)
+      return(out)
+    }
 
       #### fit univariate cox models with each covariate
-      mod1 <- lapply(colnames(trainX %>%
+      mod1 <- sapply(colnames(trainX %>%
                                 dplyr::select(-npi, -age_std)),
                      FUN = reg, dep_var = "Surv(time, status)",
                      data_source = train %>% dplyr::mutate(
         time   = !!time,
         status = !!status) )
-      #soft correction
-      mod2 <- lapply(mod1,
-                     function(p)
-                       p[p$logtest["pvalue"] < 0.01]$coefficients)
+
       ### drop covariates that are not "statistically significant"
-      mod2[sapply(mod2, is.null)] <- NULL
-      features <- sapply(mod2, function(p) rownames(p))
-      coefficients <- sapply(mod2, function(p) p[,1])
-      mod <- data.frame(coef = coefficients)
+      features <- colnames(trainX %>%
+                             dplyr::select(-npi, -age_std))[!is.na(mod1)]
+      mod1 <- unlist(mod1[!is.na(mod1)])
+
+      #create model
+      mod <- data.frame(coef = as.vector(mod1))
       rownames(mod) <- features
+      print(mod)
       #prepare for enet
       x <- cbind(trainX %>% dplyr::select(rownames(mod)),
                            trainX %>% dplyr::select(npi, age_std))
