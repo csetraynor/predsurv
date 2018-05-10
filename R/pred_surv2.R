@@ -120,7 +120,7 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
       #create model
       mod <- data.frame(coef = as.vector(mod1))
       rownames(mod) <- features
-      print(mod)
+
       #prepare for enet
       x <- cbind(trainX %>% dplyr::select(rownames(mod)),
                            trainX %>% dplyr::select(npi, age_std))
@@ -139,7 +139,6 @@ fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, f
       mod <-  glmnet::cv.glmnet(x, y, family = "cox",
         grouped = TRUE, lambda.min.ratio = lambda, alpha = 0.8,
         foldid = foldid, parallel = FALSE, penalty.factor = p.fac)
-      print("Done!")
 
       # find optimised lambda
       optimal.coef <- as.matrix(coef(mod, s = "lambda.min"))

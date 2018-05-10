@@ -57,7 +57,7 @@ mc_samp$mod_lasso2 <- NULL
 ####Train models with pooled data
 mod_lasso_pool <- purrr::map(mc_samp$splits, predsurv::fun_train2, fit = "Lasso", data = brca, lambda = 0.001)
 saveRDS(mod_lasso_pool, "\\\\mokey.ads.warwick.ac.uk/User41/u/u1795546/Documents/models/mod_lasso_pool.RDS")
-mod_lasso_pool <- NULL
+
 
 mc_samp$mod_lasso2 <- readRDS("mod_lasso2.RDS")
 
