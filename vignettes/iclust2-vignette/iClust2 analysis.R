@@ -1,7 +1,7 @@
 ###iClust2 Analyses
 
 library(predsurv)
-devtools::document()
+#devtools::document()
 data("metabric_clinical_data")
 
 ##### Data pre-process #######
@@ -15,7 +15,7 @@ metabric_clinical_data$os_months <- ifelse(metabric_clinical_data$os_months == 0
 # Get genomic data
 ##### Can be downloaded from http://www.cbioportal.org/study?id=brca_metabric#summary to download, follow the link-> Download data
 genedata <- readr::read_tsv("C:/RFactory/Downloads/brca_metabric/data_expression.txt", col_names = TRUE)
-#genedata <- readr::read_tsv("brca_metabric/data_expression.txt", col_names = TRUE)
+genedata <- readr::read_tsv("/home/mtr/rfactory/brca_metabric/data_expression.txt", col_names = TRUE)
 object.size(genedata)
 ###Which is too heavy to upload
 
@@ -32,7 +32,7 @@ Entrez_Gene_Id <- unlist(genedata[,"Entrez_Gene_Id"])
 rm(list = c("genedata", "metabric_clinical_data"))
 
 #Standardise predictors
-brca[,grep("feature", colnames(brca) )] <- std_dat(brca[,grep("feature", colnames(brca) )])
+brca[,Hugo_Symbol] <- std_dat(brca[,Hugo_Symbol])
 brca$age_std <- (brca$age_at_diagnosis - mean(brca$age_at_diagnosis)) / sd(brca$age_at_diagnosis)
 brca$age_at_diagnosis <- NULL
 
@@ -41,14 +41,21 @@ unique(brca$os_status)
 brca$os_deceased <- brca$os_status == "DECEASED"
 brca$os_status <- NULL
 
+brca <- readRDS("/media/mtr/SeagateExpansionDrive/R-Factory/brca_data.RDS")
+
 #Get brca iclust2
 iclust2 <- brca[brca$intclust == 2,]
 iclust2$intclust <- NULL
 brca$intclust <- NULL
 
+
 #create resamples first
 set.seed(9666)
 mc_samp <- rsample::mc_cv(iclust2, strata = "os_deceased", times = 100, prop = 1/4)
+
+mc_samples <- lapply(mc_samp$splits, function(s) s$in_id)
+
+saveRDS(mc_samples, "mc_samples.RDS")
 
 memory.limit(10e10)
 
@@ -122,4 +129,127 @@ mc_samp$mod_srf <- NULL
 
 mc_samp$mod_ridge <- readRDS("mod_ridge2.RDS")
 mc_samp$mod_lasso2 <- readRDS("mod_lasso2.RDS")
+
+library(doMC)
+?mclapply()
+
+
+
+
+########## Performance measure
+
+mc_cv <-  readRDS("mc_cv.RDS")
+saveRDS(mc_cv, "mc_cv.RDS")
+
+
+
+mc_cv$brier_enet_iclust2 <- purrr::pmap_dbl(list(mc_cv$splits,
+                                                   mc_cv$enet_iclust2),
+                                       function(splits, mod){predsurv::fun_mp(
+                                         obj = mod,
+                                         test_data = splits,
+                                         fit = "Elastic net",
+                                         pred = "Brier",
+                                         subject = patient_id
+                                       )
+                                       })
+
+
+saveRDS(mc_cv, "mc_cv.RDS")
+
+mc_cv$brier_enet_lasso <- purrr::pmap_dbl(list(mc_cv$splits, mc_cv$lasso_iclust2),
+                                           function(splits, mod){predsurv::fun_mp(
+                                             obj = mod,
+                                             test_data = splits,
+                                             fit = "Lasso",
+                                             pred = "Brier",
+                                             subject = patient_id
+                                           )
+                                           })
+
+saveRDS(mc_cv, "mc_cv.RDS")
+
+library(tidyr)
+library(ggplot2)
+##Plot Brier
+
+brier_dens <- mc_cv %>%
+  dplyr::select(contains("brier")) %>%
+  gather() %>%
+  ggplot(aes(x = statistic, col = model)) +
+  geom_line(stat = "density") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+brier_dens <- brier_dens +
+  labs(x = "Integrated Brier Score",
+       title = "Density of iBrier") +
+  geom_vline(xintercept =  0.25 , linetype = "dotted" )
+brier_dens
+
+library(tidyposterior)
+mc_samp_brier <- tidyposterior::perf_mod(mc_samp %>%
+                                           dplyr::select(-splits, - mod_lasso),
+                                         seed = 6507, iter = 5000, transform = logit_trans,
+                                         hetero_var = FALSE)
+
+mbri_tab <- summary(tidy(mc_samp_brier))
+mbri_tab <- as.data.frame(mbri_tab)
+
+star = stargazer(mbri_tab, type = "latex", summary = FALSE, digits.extra = 3,digits = 3, digit.separator = ".",
+                 title = "Bayesian analysis of resampling AUC")
+
+
+stargazer(mbri_tab, type = "latex", summary = FALSE, digits.extra = 3,
+          digits = 3, digit.separator = ".",
+          title = "Bayesian analysis of resampling AUC")
+
+
+posterior_brier <- ggplot(tidy(mc_samp_brier)) +
+  theme_bw()+
+  labs(
+    title = "Posterior probability for integrated Brier Score")
+posterior_brier <- posterior_brier +   labs(
+  title = "Posterior probability of iBrier")
+posterior_brier
+
+comparisons_brier <- contrast_models(
+  mc_samp_brier,
+  list_1 = rep("brier_reference", 1),
+  list_2 = "brier_lasso",
+  seed = 4654
+)
+
+compare_brier <- ggplot(comparisons_brier, size = 0.05) +
+  theme_bw()+
+  labs(
+    title = "Posterior probability of iBrier.",
+    subtitle ="Benchmark: Reference")
+
+compare_brier <- compare_brier +   labs(
+  title = "Posterior probability for iBrier",
+  subtitle ="Benchmark: Reference")
+compare_brier
+
+
+####### Variable Importance
+
+
+#Calculate Brier Skill Score
+
+mc_cv$bss <- purrr::map2_dbl(mc_cv$brier_enet_iclust2, mc_cv$brier_reference, bss)
+
+library(tidyr)
+par(mfrow=c(1,1))
+
+
+summary_features <- do.call(rbind, mc_cv$enet_iclust2)
+
+count_features <- dplyr::count(summary_features, Predictor) %>%
+  arrange(desc(n))
+
+summary_features %>%
+  filter(Predictor == "NGF")
+
+summary_features %>%
+  filter(Predictor == "MAP1B")
 

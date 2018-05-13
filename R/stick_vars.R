@@ -12,6 +12,7 @@ stick_vars <- function(clidata, genedata){
 
   #get gene expression matrix obtain id
   gene_expression <- genedata %>% dplyr::select(- Hugo_Symbol, -Entrez_Gene_Id)
+  Hugo_Symbol <- genedata %>% dplyr::select(Hugo_Symbol) %>% unlist
   id_gene_expression <- colnames(gene_expression)
   #from clinical data keep observations with gene expression
   #obtain sample with gene expression measurements and match
@@ -26,7 +27,7 @@ stick_vars <- function(clidata, genedata){
   ##Get dataframe back
   t_gene_expression <- as.data.frame(t_gene_matrix)
 
-  colnames(t_gene_matrix) <- paste("feature",as.character(1:ncol(t_gene_matrix)),sep="")
+  colnames(t_gene_matrix) <- Hugo_Symbol
 
   ### cbind clinical and genomic data
   out <- cbind(Y, t_gene_matrix)
