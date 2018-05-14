@@ -249,13 +249,66 @@ compare_brier
 
 #Calculate Brier Skill Score
 
-mc_cv$bss <- purrr::map2_dbl(mc_cv$brier_enet_iclust2, mc_cv$brier_reference, bss)
+mc_cv$bss_enet <- purrr::map2_dbl(mc_cv$brier_enet_iclust2, mc_cv$brier_reference, bss)
+mc_cv$bss_lasso <- purrr::map2_dbl(mc_cv$brier_lasso_iclust2, mc_cv$brier_reference, bss)
+
+
 
 library(tidyr)
+library(ggplot2)
+##Plot Brier
+
+bss_dens <- mc_cv %>%
+  dplyr::select(contains("bss")) %>%
+  gather() %>%
+  ggplot(aes(x = value, col = key, fill = key)) +
+  geom_density(alpha = 0.1) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+bss_dens <- bss_dens +
+  labs(x = "Brier Skill Score",
+       title = "Density Brier Skill score") +
+  geom_vline(xintercept =  0 , linetype = "dotted" )
+bss_dens
+
+
+############# Model averaging
+mc_cv$weight_enet <- bss(mc_cv$brier_enet_iclust2, mc_cv$brier_reference, averaging = TRUE)
+
+mc_cv %>%
+  dplyr::select(contains("weight")) %>%
+  gather() %>%
+  ggplot(aes(x = value, col = key, fill = key)) +
+  geom_density(alpha = 0.1) +
+  theme_bw()
+############ Select features
+
 par(mfrow=c(1,1))
 
 
 summary_features <- do.call(rbind, mc_cv$enet_iclust2)
+summary_features$split <- as.numeric(gsub("\\..*","",rownames(summary_features)))
+
+summary_features$weights <- mc_cv$weight_enet[summary_features$split]*100
+
+summary_weights <- summary_features %>%
+  group_by(Predictor) %>%
+  dplyr::summarize(
+    count = n(),
+    weight = sum(weights),
+    min_coeff = min(Coefficient),
+    max_coeff = max(Coefficient),
+    median_coeff = median(Coefficient),
+    weight_coeff = sum(weights*Coefficient)/100) %>%
+  arrange(desc(abs(weight_coeff)))
+
+    ,
+    coeff_weight = sum(weights*coefficients()))
+
+library(data.table)
+summary_features <- rbindlist(lapply(mc_cv$enet_iclust2, FUN = function(x) x))
+
+
 
 count_features <- dplyr::count(summary_features, Predictor) %>%
   arrange(desc(n))
@@ -265,4 +318,12 @@ summary_features %>%
 
 summary_features %>%
   filter(Predictor == "MAP1B")
+
+
+
+
+
+#####GSEA
+
+require(clusterProfiler)
 

@@ -430,9 +430,15 @@ pred_surv_prob <- function(survdata, time = time, status = status,
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 
-bss <- function(bs_forecast, bs_reference){
+bss <- function(bs_forecast, bs_reference, averaging = FALSE){
 
-  bss <- (1 - (bs_forecast)/(bs_reference))
+  if(averaging){
+    score <- function(x,y) {(1 - (x)/(y))}
+    skill <- purrr::map2_dbl(bs_forecast, bs_reference, score)
+    bss <- exp(skill - max(skill) ) / sum(exp(skill - max(skill) ))
+  }else{
+    bss <- (1 - (bs_forecast)/(bs_reference))
+  }
   return(bss)
 
 }
