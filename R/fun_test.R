@@ -419,7 +419,23 @@ pred_surv_prob <- function(survdata, time = time, status = status,
   out <- predict(mod, newdata = X , type = "lp")
 }
 
+#' Calculate Brier Skill Score
+#'
+#' Estimate Brier Skill Score usually from reference
+#' @param
+#' obj : coefficient predicted for a survival model e.g. with glmnet \cr
+#' test_data: a test holdout dataframe, is recommended to test the model in a separate dataset from which was used for training\cr
+#' @return predicted linear predictor for each individual in the test set
+#' @export
+#' @importFrom magrittr %>%
+#' @importFrom rlang !!
 
+bss <- function(bs_forecast, bs_reference){
+
+  bss <- (1 - (bs_forecast)/(bs_reference))
+  return(bss)
+
+}
 
 
 

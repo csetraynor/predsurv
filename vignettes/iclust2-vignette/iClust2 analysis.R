@@ -141,6 +141,7 @@ library(doMC)
 mc_cv <-  readRDS("mc_cv.RDS")
 saveRDS(mc_cv, "mc_cv.RDS")
 
+mc_cv <- readRDS("C:/RFactory/mc_cv.RDS")
 
 
 mc_cv$brier_enet_iclust2 <- purrr::pmap_dbl(list(mc_cv$splits,
@@ -166,6 +167,18 @@ mc_cv$brier_enet_lasso <- purrr::pmap_dbl(list(mc_cv$splits, mc_cv$lasso_iclust2
                                              subject = patient_id
                                            )
                                            })
+
+
+mc_cv$brier_reference <- purrr::pmap_dbl(list(mc_cv$splits, mc_cv$lasso_iclust2),
+                                          function(splits, mod){predsurv::fun_mp(
+                                            obj = mod,
+                                            test_data = splits,
+                                            fit = "Lasso",
+                                            pred = "Brier",
+                                            subject = patient_id,
+                                            reference = TRUE
+                                          )
+                                          })
 
 saveRDS(mc_cv, "mc_cv.RDS")
 
