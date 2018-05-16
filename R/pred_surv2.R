@@ -18,7 +18,7 @@
 #' @import mvtnorm
 #' @import rpart
 
-fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, preCut = TRUE, ...){
+fun_train2 <- function(hold_out, data, time = os_months, status = os_deceased, fit, subject = patient_id, lambda = 0.001, preCut = FALSE, ...){
 
   ###### abstract dependent vars
   time <- dplyr::enquo(time)

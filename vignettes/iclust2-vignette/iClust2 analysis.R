@@ -1,3 +1,4 @@
+# !diagnostics off
 ###iClust2 Analyses
 
 library(predsurv)
@@ -142,6 +143,19 @@ mc_cv <-  readRDS("mc_cv.RDS")
 saveRDS(mc_cv, "mc_cv.RDS")
 
 mc_cv <- readRDS("C:/RFactory/mc_cv.RDS")
+
+mc_cv$relaxed_lasso_iclust2 <- purrr::pmap(list(
+                                                 mc_cv$lasso_iclust2,
+                                                 mc_cv$splits),
+                                            function(mod, splits){rel_shrink(
+                                              obj = mod,
+                                              data = splits
+                                            )
+                                            })
+
+
+
+mc_cv$brier_relaxed_lasso_iclust2
 
 
 mc_cv$brier_enet_iclust2 <- purrr::pmap_dbl(list(mc_cv$splits,

@@ -15,10 +15,12 @@
 #' @importFrom rlang !!
 #' @import prodlim
 #' @import survival
-fun_mp <- function(obj, test_data, fit = "Lasso", subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier",  all = FALSE, integrated = TRUE, reference = FALSE, noboot = 0, mc = FALSE, ...){
+fun_mp <- function(obj, test_data, fit = "Lasso", subject = subject, time = os_months, status = os_deceased, event_type = 1,  pred = "Brier",  all = FALSE, integrated = TRUE, reference = FALSE, noboot = 0, mc = FALSE, Predictor = Predictor, Coefficient = Coefficient, ...){
   time <- dplyr::enquo(time)
   status <- dplyr::enquo(status)
   subject <- dplyr::enquo(subject)
+  Predictor <- dplyr::enquo(Predictor)
+  Coefficient <- dplyr::enquo(Coefficient)
 
 
   #transform splits to train data
@@ -29,8 +31,8 @@ fun_mp <- function(obj, test_data, fit = "Lasso", subject = subject, time = os_m
   #this is the most important bit, gets the fitted model and extracts the selected features
   if(fit == "Univariate" | fit == "Lasso" | fit == "Adaptive Lasso" | fit == "Ridge regression" | fit == "Elastic net" ){
     # find lambda for which dev.ratio is max
-    selectedBeta <- obj$Predictor
-    inits <- obj$Coefficient
+    selectedBeta <- obj %>% select(!!Predictor) %>% unlist
+    inits <- obj %>% select(!!Coefficient) %>% unlist
   }
   #Now prepares for getting performance measures, random forest at the bottom
   if(fit != "Random forest"){
@@ -56,7 +58,7 @@ fun_mp <- function(obj, test_data, fit = "Lasso", subject = subject, time = os_m
                                              event = test_data %>%
                                                dplyr::select(!!status) %>%
                                                unlist)~.,
-                              init = inits, iter = 0,
+                              init = inits, iter = 1,
                               data = X)
     }
     #Create grid of equidistant time points for testing
