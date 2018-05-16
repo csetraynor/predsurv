@@ -1,0 +1,571 @@
+$E2F1_UP.V1_DN
+  features        coef
+1 C19orf50 -0.06723736
+
+$E2F1_UP.V1_UP
+  features        coef
+1     ARF3 0.103435634
+2    VEGFA 0.004443209
+
+$EGFR_UP.V1_DN
+  features        coef
+1   NDUFA5 -0.07660145
+
+$ERB2_UP.V1_DN
+  features        coef
+1  C9orf95 -0.04866306
+
+$ERB2_UP.V1_UP
+  features       coef
+1   CYP1A1 0.02291891
+
+$GCNP_SHH_UP_EARLY.V1_UP
+  features        coef
+1   FIP1L1  0.02956068
+2   ABCB10 -0.02130998
+
+$GCNP_SHH_UP_LATE.V1_UP
+  features        coef
+1     COIL -0.09844302
+2     IGF2  0.07251806
+
+$RAPA_EARLY_UP.V1_UP
+  features         coef
+1    PDE2A  0.032906932
+2  ST8SIA3 -0.002934329
+
+$HINATA_NFKB_MATRIX
+  features        coef
+1 SERPINE1 0.009783509
+
+$CYCLIN_D1_KE_.V1_DN
+  features       coef
+1     EML1 0.02232986
+
+$CYCLIN_D1_UP.V1_DN
+  features         coef
+1     EML1  0.022329858
+2    GALK1 -0.005185018
+
+$CYCLIN_D1_UP.V1_UP
+  features       coef
+1    PDE2A 0.03290693
+
+$CSR_LATE_UP.V1_DN
+  features       coef
+1      PGF 0.02467765
+
+$CSR_LATE_UP.V1_UP
+  features        coef
+1    NUP88 -0.03569496
+2    CHEK2 -0.05425717
+3     EML1  0.02232986
+
+$AKT_UP_MTOR_DN.V1_DN
+  features        coef
+1     COIL -0.09844302
+2    RGS19 -0.02130057
+
+$AKT_UP_MTOR_DN.V1_UP
+  features       coef
+1   CAMKK1 -0.0646145
+
+$AKT_UP.V1_UP
+  features        coef
+1   CAMKK1 -0.06461450
+2  DNAJB13  0.03769722
+3     ADH4  0.02631325
+
+$PIGF_UP.V1_DN
+  features       coef
+1   CYP1A1 0.02291891
+
+$PIGF_UP.V1_UP
+  features        coef
+1      AGA -0.07796565
+
+$VEGF_A_UP.V1_DN
+  features        coef
+1    MAP1B  0.09897382
+2     GPR4  0.03104224
+3    OSTF1 -0.10312950
+
+$VEGF_A_UP.V1_UP
+  features        coef
+1   ABCB10 -0.02130998
+
+$ATF2_S_UP.V1_DN
+  features       coef
+1      NGF 0.10117257
+2 NDUFA4L2 0.06986315
+
+$ATF2_S_UP.V1_UP
+  features       coef
+1    MAP1B 0.09897382
+
+$ATF2_UP.V1_DN
+  features       coef
+1 NDUFA4L2 0.06986315
+2 TP73-AS1 0.01446507
+
+$ATF2_UP.V1_UP
+  features       coef
+1    PODXL 0.01315328
+2     IGF2 0.07251806
+
+$WNT_UP.V1_DN
+  features        coef
+1      NGF 0.101172570
+2    VEGFA 0.004443209
+
+$WNT_UP.V1_UP
+  features         coef
+1     IGF2  0.072518059
+2  DNAJB13  0.037697218
+3  ST8SIA3 -0.002934329
+
+$ATM_DN.V1_DN
+  features         coef
+1  SLC10A2  0.009148560
+2    GPR68 -0.002886644
+
+$ATM_DN.V1_UP
+  features         coef
+1     PSG5 -0.005932094
+2    VEGFA  0.004443209
+
+$P53_DN.V2_DN
+  features       coef
+1      PGF 0.02467765
+
+$P53_DN.V2_UP
+  features         coef
+1    GALK1 -0.005185018
+
+$RELA_DN.V1_DN
+  features         coef
+1    TFDP3 -0.002752978
+
+$RELA_DN.V1_UP
+  features        coef
+1    VEGFA 0.004443209
+
+$P53_DN.V1_DN
+  features       coef
+1   UGT2B7 0.05134584
+
+$P53_DN.V1_UP
+  features       coef
+1    PODXL 0.01315328
+
+$BCAT_BILD_ET_AL_UP
+  features     coef
+1   CAMKMT 0.018356
+
+$E2F3_UP.V1_DN
+  features        coef
+1 C16orf74 -0.03459837
+
+$E2F3_UP.V1_UP
+  features        coef
+1    SNX10 -0.06351064
+
+$MYC_UP.V1_DN
+  features        coef
+1 C16orf74 -0.03459837
+
+$MYC_UP.V1_UP
+  features         coef
+1   CCDC78  0.219935562
+2   CAMKMT  0.018356000
+3  NR2C2AP -0.000849423
+
+$SRC_UP.V1_DN
+  features       coef
+1     ADH4 0.02631325
+
+$SRC_UP.V1_UP
+  features         coef
+1    GALK1 -0.005185018
+
+$SNF5_DN.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$CAMP_UP.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$CAMP_UP.V1_UP
+  features       coef
+1     COPE -0.1494387
+
+$LTE2_UP.V1_DN
+  features        coef
+1  C9orf95 -0.04866306
+
+$MEK_UP.V1_DN
+  features        coef
+1  C9orf95 -0.04866306
+2    SNX10 -0.06351064
+
+$MEK_UP.V1_UP
+  features       coef
+1   CYP1A1 0.02291891
+
+$PRC1_BMI_UP.V1_UP
+  features         coef
+1    GALK1 -0.005185018
+
+$PRC2_EED_UP.V1_DN
+  features         coef
+1    GALK1 -0.005185018
+
+$PRC2_EED_UP.V1_UP
+  features       coef
+1   CYP1A1 0.02291891
+2   GPR116 0.04928859
+
+$PRC2_EZH2_UP.V1_UP
+  features      coef
+1      NGF 0.1011726
+
+$PRC2_SUZ12_UP.V1_UP
+  features        coef
+1 C19orf50 -0.06723736
+
+$JNK_DN.V1_DN
+  features       coef
+1    MAP1B 0.09897382
+2   CYP1A1 0.02291891
+
+$JNK_DN.V1_UP
+  features         coef
+1  SLC34A1 -0.013135190
+2     RRAD  0.005480438
+
+$BRCA1_DN.V1_UP
+  features       coef
+1     CD34 0.01146085
+
+$CTIP_DN.V1_UP
+  features       coef
+1     CD34 0.01146085
+
+$PKCA_DN.V1_DN
+    features       coef
+1 ST6GALNAC1 0.02731529
+2    SLC10A2 0.00914856
+
+$MTOR_UP.N4.V1_UP
+  features         coef
+1   SDF2L1 -0.046444110
+2    OBFC1 -0.010214506
+3    VEGFA  0.004443209
+
+$PTEN_DN.V2_UP
+  features         coef
+1    ZMAT5 -0.006461405
+
+$DCA_UP.V1_DN
+  features        coef
+1   GPR116  0.04928859
+2    CHEK2 -0.05425717
+
+$ESC_J1_UP_EARLY.V1_DN
+  features         coef
+1     GBX2 -0.080836388
+2 C16orf74 -0.034598372
+3 SERPINE1  0.009783509
+
+$ESC_J1_UP_LATE.V1_DN
+  features        coef
+1   CAMKK1 -0.06461450
+2     GBX2 -0.08083639
+
+$ESC_J1_UP_LATE.V1_UP
+  features       coef
+1    PODXL 0.01315328
+2     IGF2 0.07251806
+
+$ESC_V6.5_UP_EARLY.V1_DN
+  features         coef
+1     GBX2 -0.080836388
+2 C16orf74 -0.034598372
+3     IGF2  0.072518059
+4 SERPINE1  0.009783509
+
+$ESC_V6.5_UP_EARLY.V1_UP
+  features         coef
+1    ZMAT5 -0.006461405
+
+$ESC_V6.5_UP_LATE.V1_DN
+  features         coef
+1     GBX2 -0.080836388
+2 C16orf74 -0.034598372
+3 SERPINE1  0.009783509
+
+$ESC_V6.5_UP_LATE.V1_UP
+  features       coef
+1    PODXL 0.01315328
+
+$ALK_DN.V1_DN
+  features         coef
+1  ST8SIA3 -0.002934329
+
+$ALK_DN.V1_UP
+  features         coef
+1    GALK1 -0.005185018
+2    VEGFA  0.004443209
+
+$BMI1_DN_MEL18_DN.V1_UP
+  features        coef
+1    PODXL 0.013153282
+2    VEGFA 0.004443209
+
+$BMI1_DN.V1_UP
+  features         coef
+1    PODXL  0.013153282
+2     PSG5 -0.005932094
+
+$MEL18_DN.V1_UP
+  features        coef
+1    VEGFA 0.004443209
+
+$PTEN_DN.V1_DN
+  features         coef
+1   BTBD18 -0.023028221
+2  ST8SIA3 -0.002934329
+
+$NOTCH_DN.V1_DN
+  features         coef
+1     IL26 -0.147381490
+2 SERPINE1  0.009783509
+3    GPR68 -0.002886644
+
+$NOTCH_DN.V1_UP
+  features         coef
+1     RRAD  0.005480438
+2    TFDP3 -0.002752978
+
+$EIF4E_DN
+  features        coef
+1  TP53BP1 0.027244998
+2 TP73-AS1 0.014465071
+3     SIK3 0.003661514
+
+$EIF4E_UP
+  features       coef
+1    BOLA1 -0.1437157
+
+$CRX_DN.V1_UP
+  features        coef
+1 C16orf74 -0.03459837
+
+$RB_DN.V1_UP
+  features        coef
+1   PEX11B -0.09217932
+
+$RB_P130_DN.V1_UP
+  features        coef
+1 C17orf90 -0.08082615
+2   SDF2L1 -0.04644411
+
+$CAHOY_ASTROCYTIC
+  features        coef
+1    VEGFA 0.004443209
+
+$CAHOY_ASTROGLIAL
+  features        coef
+1 SERPINE1 0.009783509
+
+$CAHOY_OLIGODENDROCUTIC
+  features       coef
+1     FIGN 0.02401702
+
+$IL2_UP.V1_DN
+  features       coef
+1     CD34 0.01146085
+
+$IL2_UP.V1_UP
+  features        coef
+1  SLC34A1 -0.01313519
+
+$IL21_UP.V1_UP
+  features         coef
+1  ST8SIA3 -0.002934329
+
+$PDGF_ERK_DN.V1_UP
+  features        coef
+1    CHEK2 -0.05425717
+
+$PDGF_UP.V1_DN
+  features       coef
+1   CYP1A1 0.02291891
+2  SLC10A2 0.00914856
+
+$TGFB_UP.V1_DN
+  features        coef
+1   PEX11B -0.09217932
+2  TP53BP1  0.02724500
+
+$TGFB_UP.V1_UP
+  features        coef
+1      NGF 0.101172570
+2     RRAD 0.005480438
+
+$YAP1_UP
+  features        coef
+1  C9orf95 -0.04866306
+
+$SIRNA_EIF4GI_DN
+  features        coef
+1    SNX10 -0.06351064
+
+$HOXA9_DN.V1_UP
+  features         coef
+1    SNX10 -0.063510640
+2    UGGT2  0.002027604
+
+$STK33_DN
+  features        coef
+1    PODXL  0.01315328
+2 C16orf74 -0.03459837
+
+$STK33_NOMO_DN
+  features        coef
+1 C16orf74 -0.03459837
+
+$STK33_NOMO_UP
+  features      coef
+1   CSRNP1 0.1119343
+
+$STK33_SKM_DN
+  features        coef
+1     YDJC -0.06269343
+2     GBX2 -0.08083639
+3    PODXL  0.01315328
+
+$STK33_UP
+  features      coef
+1   CSRNP1 0.1119343
+
+$KRAS.AMP.LUNG_UP.V1_DN
+  features       coef
+1     CD34 0.01146085
+
+$KRAS.AMP.LUNG_UP.V1_UP
+  features         coef
+1      NGF  0.101172570
+2     IL26 -0.147381490
+3    GPR68 -0.002886644
+
+$KRAS.DF.V1_DN
+  features       coef
+1      NGF 0.10117257
+2   CYP1A1 0.02291891
+3     MAVS 0.14558332
+
+$KRAS.DF.V1_UP
+  features         coef
+1    OBFC1 -0.010214506
+2 SERPINE1  0.009783509
+3     RRAD  0.005480438
+
+$TBK1.DF_DN
+  features         coef
+1   MRPS33 -0.008123767
+
+$TBK1.DF_UP
+  features        coef
+1    SNX10 -0.06351064
+2     EML1  0.02232986
+3 TP73-AS1  0.01446507
+
+$TBK1.DN.48HRS_UP
+  features        coef
+1    CHEK2 -0.05425717
+2  TP53BP1  0.02724500
+
+$NFE2L2.V2
+  features       coef
+1   CAMKK1 -0.0646145
+2    OSTF1 -0.1031295
+3     PRR5 -0.1303343
+
+$CORDENONSI_YAP_CONSERVED_SIGNATURE
+  features        coef
+1 SERPINE1 0.009783509
+
+$JAK2_DN.V1_UP
+  features         coef
+1    GALK1 -0.005185018
+
+$KRAS.300_UP.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$KRAS.300_UP.V1_UP
+  features         coef
+1     GPR4  0.031042236
+2    PDE2A  0.032906932
+3    TFDP3 -0.002752978
+
+$KRAS.50_UP.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$KRAS.600_UP.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$KRAS.600_UP.V1_UP
+  features         coef
+1     GPR4  0.031042236
+2     IGF2  0.072518059
+3    PDE2A  0.032906932
+4    TFDP3 -0.002752978
+
+$KRAS.600.LUNG.BREAST_UP.V1_UP
+  features         coef
+1      NGF  0.101172570
+2     GPR4  0.031042236
+3    PDE2A  0.032906932
+4    TFDP3 -0.002752978
+
+$KRAS.BREAST_UP.V1_UP
+  features       coef
+1 NDUFA4L2 0.06986315
+2     IGF2 0.07251806
+3    PDE2A 0.03290693
+
+$KRAS.KIDNEY_UP.V1_DN
+  features         coef
+1      NGF  0.101172570
+2     IL26 -0.147381490
+3   CHRNA9 -0.002246837
+
+$KRAS.LUNG_UP.V1_UP
+  features      coef
+1      NGF 0.1011726
+
+$KRAS.LUNG.BREAST_UP.V1_UP
+  features         coef
+1     GPR4  0.031042236
+2    PDE2A  0.032906932
+3    TFDP3 -0.002752978
+
+$KRAS.PROSTATE_UP.V1_DN
+  features        coef
+1     RRAD 0.005480438
+
+$KRAS.PROSTATE_UP.V1_UP
+  features       coef
+1     STRN 0.04879655
+2  SLC10A2 0.00914856
+
+$LEF1_UP.V1_UP
+  features        coef
+1    MAP1B 0.098973822
+2 SERPINE1 0.009783509
+
