@@ -6,7 +6,8 @@
 \usage{
 fun_mp(obj, test_data, fit = "Lasso", subject = subject, time = os_months,
   status = os_deceased, event_type = 1, pred = "Brier", all = FALSE,
-  integrated = TRUE, reference = FALSE, noboot = 0, mc = FALSE, ...)
+  integrated = TRUE, reference = FALSE, noboot = 0, mc = FALSE,
+  Predictor = Predictor, Coefficient = Coefficient, ...)
 }
 \arguments{
 \item{obj}{: survival model object for example a glmnet fit. \cr

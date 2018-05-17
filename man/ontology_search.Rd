@@ -4,7 +4,8 @@
 \alias{ontology_search}
 \title{Examine Ontology}
 \usage{
-ontology_search(hallmark_list, predictor, coeff = TRUE)
+ontology_search(hallmark_list, predictor, coeff = TRUE, coef = median_coeff,
+  name = "hazard ratio", Predictor = Predictor)
 }
 \arguments{
 \item{hallmark_list:}{list of hallmarks from ontology database \cr

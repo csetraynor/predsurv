@@ -11,10 +11,11 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang !!
 
-ontology_search <- function(hallmark_list, predictor, coeff = TRUE, coef = median_coeff, name = "hazard ratio"){
+ontology_search <- function(hallmark_list, predictor, coeff = TRUE, coef = median_coeff, name = "hazard ratio", Predictor = Predictor){
 
   coef <- dplyr::enquo(coef)
-  p <- as.character(predictor$Predictor)
+  Predictor <- dplyr::enquo(Predictor)
+  p <- as.character(predictor %>% dplyr::select(!!Predictor) %>% unlist)
   hall <- lapply(hallmark_list, function(x){
     sapply(p, function(p)
       ifelse(p %in% x, p, NA)
@@ -27,7 +28,7 @@ ontology_search <- function(hallmark_list, predictor, coeff = TRUE, coef = media
   if(coeff){
     hall <- lapply(hall, function(h){
       sapply(h, function(i){
-        predictor %>% filter(Predictor == i) %>% dplyr::select(!!coef)
+        predictor %>% filter(!!Predictor == i) %>% dplyr::select(!!coef)
       })
     })
     hall <- lapply(hall, function(h){
