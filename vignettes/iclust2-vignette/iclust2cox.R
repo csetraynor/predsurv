@@ -1,10 +1,11 @@
 ###### Load data
 
 brca <- readRDS("/home/mtr/rfactory/brca_data.RDS")
-cvfit <- readRDS("/home/mtr/rfactory/predsurv/performance_results/enet_model_iclust2_filter.RDS")
+brca <- readRDS("C:/RFactory/Rdata_brca/brca_data.RDS")
+cvfit <- readRDS("//mokey.ads.warwick.ac.uk/User41/u/u1795546/Documents/Abstract_WIN_Symposium/ridge_model_brca_iclust2.RDS")
 
 iclust2 <- brca[brca$intclust == 2, ]
-rm(brca)
+#rm(brca)
 
 
 library(glmnet)
@@ -15,13 +16,31 @@ colnames(optimal) <- "mod"
 optimal$Hugo_Symbol <- rownames(optimal)
 optimal <- optimal %>% filter(mod!=0)
 
-iclust2 <- iclust2[,c( "os_months", "os_deceased" , optimal$Hugo_Symbol, "age_std", "npi")]
+iclust2 <- iclust2[,c( "os_months", "os_deceased" , optimal$Hugo_Symbol)]
+assertthat::assert_that(all.equal.character(colnames(iclust2)[3:24372], optimal$Hugo_Symbol))
+
+options(expressions = 5e5)
+memory.limit(5e10)
 
 #### Perform Cox model
 require(survival)
-clinical <- coxph(Surv(os_months, os_deceased) ~ age_std+npi , data = iclust2)
-genomic <- coxph(Surv(iclust2$os_months, iclust2$os_deceased) ~ . , data = iclust2[,optimal$Hugo_Symbol])
-clinico_genomic_fit <- coxph(Surv(iclust2$os_months, iclust2$os_deceased) ~ . , data = iclust2[,c(optimal$Hugo_Symbol, "age_std", "npi")])
+clinical <- coxph(Surv(os_months, os_deceased) ~ age_std+npi , data = iclust2, init = optimal$mod[match(c("age_std", "npi"), optimal$Hugo_Symbol)], iter = 0 )
+
+init = optimal$mod[-match(c("age_std", "npi"), optimal$Hugo_Symbol)]
+X <- iclust2[,optimal$Hugo_Symbol[-match(c("age_std", "npi"),optimal$Hugo_Symbol) ]]
+
+library(dplyr)
+
+genomic <- coxph(Surv(time = iclust2 %>%
+  dplyr::select(os_months) %>%
+  unlist,
+event = iclust2 %>%
+  dplyr::select(os_deceased) %>%
+  unlist)~.,
+init = inits, iter = 0,
+data = X)
+
+clinico_genomic_fit <- coxph(Surv(iclust2$os_months, iclust2$os_deceased) ~ . , data = iclust2[,c(optimal$Hugo_Symbol)], init = optimal$mod, iter = 0)
 
 ### Resample
 
