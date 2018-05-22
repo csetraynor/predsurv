@@ -45,6 +45,8 @@ library(glmnet)
 cvfit <- readRDS("C:/RFactory/predsurv/performance_results/enet_model_iclust2_filter.RDS")
 genedata <- readr::read_tsv("C:/RFactory/Downloads/brca_metabric/data_expression.txt", col_names = TRUE)
 
+windat
+
 genedata$Entrez_Gene_Id[match(names(geneList), genedata$Hugo_Symbol)]
 
 if("age_std" %in% optimal$Hugo_Symbol){
@@ -83,10 +85,8 @@ library(DOSE)
 names(geneList) <- genedata$Entrez_Gene_Id[match(names(geneList), genedata$Hugo_Symbol)]
 
 ncg <- gseNCG(sort(geneList, decreasing = TRUE),
-           nPerm         = 10,
-           minGSSize     =  2,
-           maxGSSize =  100,
-           pvalueCutoff  = 1,
+           minGSSize     =  1,
+           maxGSSize =  9,
            pAdjustMethod = "BH",
            verbose       = TRUE)
 
@@ -113,4 +113,4 @@ gseaplot(gsecc,  geneSetID="GO:0006414")
 plotGOgraph(gsecc)
 cnetplot(gsecc, foldChange=geneList)
 enrichMap(gsecc, vertex.label.cex=1.2, layout=igraph::layout.kamada.kawai)
-dotplot(gsecc, showCategory=30)
+dotplot(gsecc)
