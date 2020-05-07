@@ -1,28 +1,21 @@
 Package: predsurv
 Title: Build and compare diverse prediction survival models.
-Version: 0.0.0.9000
+Version: 0.9
 Authors@R: person("Carlos", "Traynor", email = "carlos.serra91@gmail.com", role = c("aut", "cre"))
-Description: predsurv is a package to organise all my scripts in survival prediction in my first years as a PhD student.
+Description: predsurv is a package to fit linear and non-linear frequentist and Bayesian survival models.
 Depends: R (>= 3.4.2),
-		ggplot2,
-		survival
+		     survival
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Imports:
-		dplyr,
-		ggplot2,
-		purrr,
-		caret,
-		ipred,
-		doParallel,
-		magrittr,
-		rlang,
-		survival,
-		tdROC,
-		glmnet,
-		pec
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
 Suggests: knitr,
-    rmarkdown
+          rmarkdown,
+          rstanarm,
+          projpred,
+          party,
+          glmnet,
+          stats,
+          parallel,
+          doMC
 VignetteBuilder: knitr
