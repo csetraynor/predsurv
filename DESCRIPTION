@@ -1,6 +1,6 @@
 Package: predsurv
 Title: Build and compare diverse prediction survival models.
-Version: 0.9
+Version: 0.9.1
 Authors@R: person("Carlos", "Traynor", email = "carlos.serra91@gmail.com", role = c("aut", "cre"))
 Description: predsurv is a package to fit linear and non-linear frequentist and Bayesian survival models.
 Depends: R (>= 3.4.2),
