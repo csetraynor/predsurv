@@ -228,12 +228,26 @@ lasso_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "statu
 #' @importFrom rstanarm stan_surv
 #' @importFrom projpred cv_varsel suggest_size project
 #' @export
-project_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "status", method = "L1", p0 = 5, nv_max = 40, save_file, ...) {
+project_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "status", method = "L1", p0 = 5, nv_max = 40, save_file, precond_cutoff, cores = 1L, ...) {
   if(!missing(g)){
     d_train <- flirt_rows(d_train, g)
   }
   .check_args(d_train, x_vars, time_var, status_var)
   x_vars <- .check_x_vars(d_train, x_vars, time_var, status_var)
+
+  if(!missing(precond_cutoff)) {
+    precond_vars <- univariate_survival(d_train,
+                        x_vars,
+                        d_test = NULL,
+                        weights =rep(1, nrow(d_train)),
+                        ncores = cores,
+                        time_var = time_var,
+                        status_var = status_var,
+                        cost = "ll",
+                        mod = "reg")
+    x_vars <- .ll_precond(x_vars, precond_cutoff)
+  }
+
   D <- length(x_vars)
   n <- nrow(d_train)
   tau0 <- p0/(D-p0) * 1/sqrt(n) # scale for tau
@@ -243,6 +257,7 @@ project_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "sta
   mod_surv <- rstanarm::stan_surv(formula = surv_formula,
                                   data    = d_train,
                                   prior   = prior_coeff,
+                                  cores   = cores,
                                   ...)
   cvs <-  projpred::cv_varsel(mod_surv, method = method, nv_max = nv_max)
   size <- projpred::suggest_size(cvs)
