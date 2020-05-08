@@ -134,10 +134,10 @@ forward_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "sta
   }
   .check_args(d_train, x_vars, time_var, status_var)
   x_vars <- .check_x_vars(d_train, x_vars, time_var, status_var)
-  if("time" %!in% colnames(dat)){
+  if("time" %!in% colnames(d_train)){
     d_train$time   <- d_train[[time_var]]
   }
-  if("status" %!in% colnames(dat)){
+  if("status" %!in% colnames(d_train)){
     d_train$status <- d_train[[status_var]]
   }
   fit0 <- coxph(Surv(time, status) ~ 1, data = d_train,
