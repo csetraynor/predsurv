@@ -73,10 +73,11 @@ get_cost_harrelc <- function(x, dat, time, status, weights) {
 get_waldtest <- function(x) {
   summary(x)$waldtest[3]
 }
-padd_coefs <- function(x_vars, coefs) {
-  dummy_coefs <- rep(0.0, length(x_vars))
-  coefs <- dummy_coefs
-  coefs[match( names(coefs), x_vars)] <- coefs
-  names(coefs) <- x_vars
-  coefs
+padd_coefs <- function (x_vars, coefs)
+{
+  padded_coefs <- rep(0, length(x_vars))
+  padded_coefs[match(names(coefs), x_vars)] <- coefs
+  names(padded_coefs) <- x_vars
+  padded_coefs
 }
+

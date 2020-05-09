@@ -234,7 +234,7 @@ project_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "sta
   }
   .check_args(d_train, x_vars, time_var, status_var)
   x_vars <- .check_x_vars(d_train, x_vars, time_var, status_var)
-
+  x_vars_back <- x_vars
   if(!missing(precond_cutoff)) {
     precond_vars <- univariate_survival(d_train,
                         x_vars,
@@ -245,27 +245,25 @@ project_sel <- function(d_train, g, x_vars, time_var = "time", status_var = "sta
                         status_var = status_var,
                         cost = "ll",
                         mod = "reg")
-    x_vars <- .ll_precond(x_vars, precond_cutoff)
+    x_vars <- .ll_precond(x_vars, precond_vars, precond_cutoff)
   }
-
   D <- length(x_vars)
   n <- nrow(d_train)
-  tau0 <- p0/(D-p0) * 1/sqrt(n) # scale for tau
+  sigma <- 2 # approximate plug-in value for observation information
+  tau0 <- p0/(D-p0) * sigma/sqrt(n)
   prior_coeff <- rstanarm::hs(global_scale = tau0, slab_scale = 1)
   # fit the full model
-  surv_formula <- get_surv_form(time_var, status_var ,x_vars)
+  surv_formula <- get_surv_form(time_var, status_var , x_vars)
   mod_surv <- rstanarm::stan_surv(formula = surv_formula,
                                   data    = d_train,
                                   prior   = prior_coeff,
                                   cores   = cores,
                                   ...)
-  cvs <-  projpred::cv_varsel(mod_surv, method = method, nv_max = nv_max)
+  cvs <-  projpred::cv_varsel(mod_surv)
   size <- projpred::suggest_size(cvs)
-  vind <- cvs$vind[1:size]
+  vind <- cvs$vind[seq_len(size)]
   res <- projpred::project(mod_surv, vind = vind)
-
-  res <- padd_coefs(x_vars, apply(as.matrix(res), 2, mean)[-1])
-
+  res <- padd_coefs(x_vars_back, apply(as.matrix(res), 2, mean)[-1])
   if(missing(save_file)) {
     return(res)
   } else {

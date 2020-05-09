@@ -31,7 +31,7 @@
   as.data.frame(obj)
 }
 
-.ll_precond <- function(x_vars, precond_cutoff) {
+.ll_precond <- function(x_vars, precond_vars, precond_cutoff) {
   x_vars[x_vars %in% names(head( sort(-2*precond_vars) , precond_cutoff))]
 }
 
